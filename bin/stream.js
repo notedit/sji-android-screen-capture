@@ -713,7 +713,8 @@ function start_stream_server() {
 		if (!req.query.type || req.query.type=="webm" || req.query.type=="png") {
 			//show video/image html for specific device
 			if (req.query.type && req.query.device) {
-				res.end(fs.readFileSync(path.join("html",req.query.type+".html")).toString()
+				res.end( "Please turn on screen of the android smartphone<br/>\n" +
+					fs.readFileSync(path.join("html",req.query.type+".html")).toString()
 						.replace("<%device%>", req.query.device)
 						.replace("<%fps%>", fps)
 				);
