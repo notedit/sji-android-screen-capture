@@ -68,6 +68,11 @@ function delayAbort(err) {
 	},0);
 }
 
+var regex_meta_shell_char = /[><;&|(){},`$"']/g;
+function __escapeChar(c) {
+	return "\\"+c;
+}
+
 function spwan_child_process(args, on_error) {
 	var childProc;
 
@@ -79,10 +84,14 @@ function spwan_child_process(args, on_error) {
 
 	var cmdline = "";
 	args.forEach(function(arg) {
-		if (/[ ;&|>(){},]/.test(arg))
-			cmdline +=' "'+arg+'"';
-		else
-			cmdline +=" "+arg;
+		arg = String(arg).replace(regex_meta_shell_char, __escapeChar);
+		if (arg.indexOf(" ") >= 0) {
+			if (arg.indexOf("\"") >= 0)
+				arg.replace(" ", "\\ ");
+			else
+				arg = '"' + arg + '"';
+		}
+		cmdline += " " + arg;
 	});
 	log("spwan child process:\n"+cmdline);
 
@@ -102,6 +111,14 @@ function spwan_child_process(args, on_error) {
 	});
 
 	return childProc;
+}
+
+function htmlEncode(text) {
+    return String(text)
+    .replace(/&(?!\w+;)/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 //****************************************************************************************
@@ -140,11 +157,11 @@ function check_adb(on_ok, on_error) {
 /*
 * get all device serial number
 */
-function get_adb_device_serial_number(on_ok, on_error, onlyFirst) {
-	log("get_adb_device_serial_number "+(onlyFirst?"(onlyFirst)":""));
+function get_all_device_serial_number(on_ok, on_error, onlyFirst) {
+	log("get_all_device_serial_number "+(onlyFirst?"(onlyFirst)":""));
 	var childProc = spwan_child_process( [argv.adb, "devices"], on_error );
 
-	var result = ""+
+	var result = "";
 	childProc.stdout.on("data", function(buf) {
 		log_(buf);
 		result += buf;
@@ -166,12 +183,56 @@ function get_adb_device_serial_number(on_ok, on_error, onlyFirst) {
 			else
 				on_error("no any device");
 		} else
-			on_error("get_adb_device_serial_number failed (ret!=0)");
+			on_error("get_all_device_serial_number failed (ret!=0)");
 	});
 }
 
-function get_any_adb_device(on_ok, on_error) {
-	return get_adb_device_serial_number(on_ok, on_error, true/*onlyFirst*/);
+function get_first_device_serial_number(on_ok, on_error) {
+	return get_all_device_serial_number(on_ok, on_error, true/*onlyFirst*/);
+}
+
+/*
+* get device description
+*/
+function get_device_description(device, on_ok, on_error, userData) {
+	log("get_device_description for " + device);
+	var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "echo"
+		, "`"
+		, "getprop", "ro.product.model", ";"
+		, "getprop", "o.build.version.incremental", ";"
+		, "getprop", "ro.product.manufacturer", ";"
+		, "getprop", "ro.build.version.release", ";"
+		, "getprop", "ro.build.version.sdk", ";"
+		, "getprop", "ro.product.cpu.abi", ";"
+		, "`"], on_error );
+
+	var result = "";
+	childProc.stdout.on("data", function(buf) {
+		log_(buf);
+		result += buf;
+	});
+
+	childProc.stderr.on("data", log_);
+
+	childProc.on("exit", function(ret) {
+		if (ret===0) //todo: Windows OS to be confirmed if invalid adb path
+			on_ok(result, device, userData);
+		else
+			on_error("get_device_description for "+device+" failed (ret!=0). Maybe the serial number is not valid or device is offline");
+	});
+}
+
+function get_all_device_description(on_ok, on_error, filterDevice/*filter*/) {
+	if (filterDevice) {
+		get_device_description(filterDevice, on_ok, on_error, [filterDevice]);
+	} else {
+		get_all_device_serial_number(function(deviceList){
+			deviceList.forEach(function(device) {
+				if (!filterDevice || device==filterDevice)
+					get_device_description(device, on_ok, on_error, deviceList);
+			});
+		}, on_error);
+	}
 }
 
 /*
@@ -189,7 +250,7 @@ function upload_file(device, on_ok, on_error) {
 	__get_remote_version();
 
 	function __get_remote_version() {
-		log("__get_remote_version"); //todo "2>" should be tested on Windows OS
+		log("__get_remote_version");
 		var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "cat", argv.rdir+"/version", "2>","/dev/null"], on_error );
 
 		var remote_version = "";
@@ -235,7 +296,7 @@ function upload_file(device, on_ok, on_error) {
 	}
 
 	function __update_remote_version() {
-		log("__update_remote_version"); //todo ">" should be tested on Windows OS
+		log("__update_remote_version");
 		var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "echo", local_version, ">", argv.rdir+"/version"], on_error );
 
 		childProc.stdout.on("data", function(buf) {
@@ -354,7 +415,7 @@ function capture( res, type, device, fps /*from here is internal arguments*/, th
 		* run adb command to get first device serial number if not specified
 		*/
 		if (!device) {
-			get_any_adb_device( function /*on_ok*/(device) {
+			get_first_device_serial_number( function /*on_ok*/(device) {
 				capture(res, type, device, fps, theConsumer);
 			}, theConsumer.on_error);
 			return;
@@ -397,7 +458,7 @@ function capture( res, type, device, fps /*from here is internal arguments*/, th
 		FFMPEG_OUTPUT="-f webm -vcodec libvpx -rc_lookahead 0 -qmin 0 -qmax 20 -b:v 1000k -";
 
 	/*
-	* execute child process.  todo: "(" "&&" should be tested on Window OS
+	* execute child process.
 	*/
 	cc.childProc = spwan_child_process( [argv.adb, "-s", device, "shell", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
 
@@ -659,22 +720,28 @@ function start_stream_server() {
 			}
 			//show link of all devices
 			else {
-				get_adb_device_serial_number( function /*on_ok*/(deviceList) {
-					var count=0;
-					deviceList.forEach( function(device) {
-						if (!req.query.device || req.query.device==device) {
-							count++;
-							if (!req.query.type || req.query.type=="webm")
-								res.write('<a href="/?type=webm&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">webm of device '+device+'</a><br/>');
-							if (!req.query.type || req.query.type=="png")
-								res.write('<a href="/?type=png&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">png of device '+device+'</a><br/>');
-						}
-					});
-					if (!count) res.write("no such device");
-					res.end();
+				var i = 0;
+				get_all_device_description( function /*on_ok*/(description, device, deviceList) {
+					if (!i)
+						res.write("<table border=1><tr><th>device serial number</th><th>description</th><th>video/image</th></tr>");
+					
+					res.write("<tr><td>"+htmlEncode(device)+"</td><td>"+description+"</td><td>");
+
+					if (!req.query.type || req.query.type=="webm")
+						res.write('<a href="/?type=webm&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">webm video</a><br/>');
+					if (!req.query.type || req.query.type=="png")
+						res.write('<a href="/?type=png&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">png image</a>');
+
+					res.write("</td></tr>");
+
+					if (i==deviceList.length-1) {
+						//res.write("</table>");
+						res.end();
+					}
+					i++;
 				}, function /*on_error*/(err) {
 					res.end(err);
-				});
+				}, req.query.device/*filter*/ );
 			}
 		}
 		else if (req.query.type) {
