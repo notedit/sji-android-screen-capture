@@ -7,3 +7,4 @@ ffmpeg-2.0.2
 libvpx-v1.2.0
 *.bz2
 test*
+.scripted
