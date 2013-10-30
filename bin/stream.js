@@ -457,7 +457,7 @@ function __cleanup(consumer, reason) {
 
 	//if no consumer subscribe the output of child process, then kill it
 	if (cc.childProc && !Object.keys(cc.consumerMap).length) {
-		log("kill child process "+cc.childProc.pid+" due to all consumer is closed");
+		log("kill child process "+cc.childProc.pid+" due to all consumer are closed");
 
 		//todo: really need this? what about private context?
 		cc.childProc.stdout.removeListener("data", cc.on_childProc_stdout);
