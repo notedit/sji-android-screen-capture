@@ -50,7 +50,7 @@ function log(msg) {
 	process.stderr.write("\n");
 	log._lineNotEnded = false;
 }
-function log_(msg	) {
+function log_(msg) {
 	process.stderr.write(Buffer.isBuffer(msg) ? msg : String(msg));
 	log._lineNotEnded = true;
 }
@@ -90,10 +90,10 @@ function spwan_child_process(args, on_error) {
 	log("child process pid: "+childProc.pid);
 
 	childProc.on("error", function(err){
-		err = "spwan_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")";
+		err = "spwan_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")";//Windows OS return strange error text
 		logd(err);
 		process.removeListener("exit", on_parent_exit);
-		on_error(err); //Windows OS return strange error text
+		on_error(err);
 	});
 
 	childProc.on("exit", function(ret, signal) {
@@ -301,6 +301,7 @@ function capture( res, type, device, fps /*from here is internal arguments*/, th
 		}
 		else {
 			log("wrong [type] argument");
+			res.end("wrong [type] argument");
 			return;
 		}
 
@@ -628,15 +629,17 @@ function start_stream_server() {
 	//app.use("/", express["static"](path.join(__dirname, "html")));
 	app.use(express.errorHandler());
 
-	// Serve video
+	/*
+	* serve webm video or png image
+	*/
 	app.get("/capture",function(req,res){
 		log("process request: " + req.url);
-		//console.log(req);
-		//start child process, redirect output to output stream "res"
 		capture(res, req.query.type, req.query.device, req.query.fps);
 	});
 
-	// menu
+	/*
+	* menu page
+	*/
 	app.get("/",function(req,res){
 		log("process request: " + req.url);
 		res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
