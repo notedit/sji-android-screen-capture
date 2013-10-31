@@ -24,7 +24,7 @@ var argv = (function() {
         .option("--vfdir <dir>", "video file dir. Default is "+(__def="video"), __def)
         .option("--rlog <android path>", "android log file path. Default is "+(__def="/sdcard/sji-asc.log"), __def)
         .option("--rdir <android dir>", "android work dir. Default is "+(__def="/data/local/tmp/sji-asc"), __def)
-        .option("--fps <floating point number in range["+MIN_FPS+"-"+MAX_FPS+"]>", "default frames per second. Default is "+(__def=3), __def)
+        .option("--fps <floating point number in range["+MIN_FPS+"-"+MAX_FPS+"]>", "default frames per second. Default is "+(__def=10), __def)
         .option("--verbose", "enable detail log")
         .option("--dump", "enable dump data (hex)")
         .parse(process.argv);
@@ -39,6 +39,20 @@ var BOUNDARY_AND_PNG_TYPE = new Buffer(BOUNDARY_STR+"\r\nContent-Type: image/png
 var PNG_TAIL_LEN = 8;
 var PNG_FLUSH_LEN = 4096;
 var PNG_CACHE_LEN = PNG_FLUSH_LEN + PNG_TAIL_LEN-1;
+
+//device manager (Key: device serial number)
+var devMgr = {
+    /*
+    deviceSerialNumberXxxx: {
+        desc: {desc:aaaa, haveErr:true/false},
+        sharedCaptureContext: {consumerMap...}
+    },
+    deviceSerialNumberYyyy: {
+        desc: {desc:bbbb, haveErr:true/false},
+        sharedCaptureContext: {consumerMap...}
+    }
+    */
+};
 
 //************************common *********************************************************
 function log(msg) {
@@ -118,11 +132,7 @@ function spwan_child_process(args, on_error) {
 }
 
 function htmlEncode(text) {
-    return String(text)
-    .replace(/&(?!\w+;)/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 //****************************************************************************************
@@ -195,11 +205,20 @@ function get_first_device_serial_number(on_ok, on_error) {
     return get_all_device_serial_number(on_ok, on_error, true/*onlyFirst*/);
 }
 
+function createDeviceContext(device) {
+    return {
+        device: device,
+        desc: {desc:"Unkown", haveErr:true}
+    };
+}
+
 /*
 * get device description
 */
 function get_device_description(device, on_ok, on_error, timeoutMs) {
     log("get_device_description for " + device);
+    
+    //run adb command to get description
     var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "echo",
         "`",
         "getprop", "ro.product.model", ";",
@@ -219,9 +238,11 @@ function get_device_description(device, on_ok, on_error, timeoutMs) {
 
     childProc.stderr.on("data", log_);
 
+    var isExpired = false;
     var timer;
     if (timeoutMs) {
         timer = setTimeout(function(){
+            isExpired = true;
             on_error("Timeout. Maybe invalid serial number or device is offline");
         }, timeoutMs);
     }
@@ -230,10 +251,17 @@ function get_device_description(device, on_ok, on_error, timeoutMs) {
         if (timeoutMs && timer)
             clearTimeout(timer);
 
-        if (ret===0)
-            on_ok(description);
-        else
-            on_error("Invalid serial number or device is offline");
+        if (ret===0) {
+            if (devMgr[device])
+                devMgr[device].desc = {desc: description, haveErr: false};
+            on_ok(description, isExpired);
+        }
+        else {
+            var err = "Invalid serial number or device is offline";
+            if (devMgr[device])
+                devMgr[device].desc = {desc: err, haveErr: true};
+            on_error(err, isExpired);
+        }
     });
 }
 
@@ -242,6 +270,7 @@ function get_device_description(device, on_ok, on_error, timeoutMs) {
 */
 function get_all_device_description(on_ok, on_error, filterDevice/*filter*/) {
     get_all_device_serial_number(function/*on_ok*/(deviceList) {
+        //reduce deviceList
         if (filterDevice) {
             var found = false;
             for(var j=0; j<deviceList.length; j++) {
@@ -258,22 +287,27 @@ function get_all_device_description(on_ok, on_error, filterDevice/*filter*/) {
             }
         }
 
+        //ensure create all device context
+        deviceList.forEach( function(device) {
+            if (!devMgr[device]) devMgr[device] = createDeviceContext(device);
+        });
+
+        //get description of device one by one
         var i=0;
-        var deviceMap = {};
         function __get_next_description() {
             if (i < deviceList.length) {
                 var device = deviceList[i++];
 
-                get_device_description(device, function/*on_ok*/(description) {
-                    deviceMap[device] = {desc: description };
-                    __get_next_description();
-                }, function/*on_error*/(err) {
-                    deviceMap[device] = {desc: err, haveErr:true};
-                    __get_next_description();
-                }, 100/*timeoutMs*/);
+                get_device_description(device, function/*on_ok*/(description, isExpired) {
+                    if (!isExpired)
+                        __get_next_description();
+                }, function/*on_error*/(err, isExpired) {
+                    if (!isExpired)
+                        __get_next_description();
+                }, 1000/*timeoutMs*/);
             }
             else {
-                on_ok(deviceMap);
+                on_ok();
             }
         }
 
@@ -366,12 +400,13 @@ function upload_file(device, on_ok, on_error) {
 }
 
 /*
-* create context for screen-capture-child-process
+* create context for screen capture process of the device
 */
-function createCaptureContext(type, fps) {
+function createCaptureContext(device, type, fps) {
     var cc = {
         consumerMap: {},
         lastConsumerId: 0,
+        device: device,
         type: type,
         fps: fps
     };
@@ -383,45 +418,48 @@ function createCaptureContext(type, fps) {
     return cc;
 }
 
-var sharedContext = createCaptureContext();
-
 /*
 * capture screen, send result to output stream and file
 */
-function capture( res, type, device, fps /*from here is internal arguments*/, theConsumer, __skip_upload ) {
-    var cc;
+function capture( device, res, type, fps /*from here is internal arguments*/, theConsumer, cc ) {
     /*
     * check arguments
     */
     if (!theConsumer) {
-        log("capture");
+        log("capture device:["+device+"] type:["+type+"] fps:["+fps+"]");
+
+        if (!device)
+            return __endOutputStreamWithInfo(res, "no [device] argument", true/*show log*/);
+        
+        /*
+        * ensure init device context and shared capture context of the device
+        */
+        if (!devMgr[device]) devMgr[device] = createDeviceContext(device);
+        if (!devMgr[device].sharedContext) devMgr[device].sharedContext = createCaptureContext(device, type, fps);
 
         /*
-        * check arguments
+        * use shared capture context or private capture context according to type and fps
         */
         if (type=="png") {
             fps = check_fps(fps, 0/*min*/, MAX_FPS, argv.fps);
-            cc = fps ? sharedContext : createCaptureContext(type, fps); //png+ fps 0 means single png, create a seperate process for it
+            cc = fps ? devMgr[device].sharedContext : createCaptureContext(device, type, fps); //png+ fps 0 means single png, create a seperate process for it
         }
         else if (type=="webm") {
             fps = check_fps(fps, MIN_FPS, MAX_FPS, argv.fps);
-            cc = sharedContext;
+            cc = devMgr[device].sharedContext;
         }
-        else {
-            log("wrong [type] argument");
-            res.end("wrong [type] argument");
-            return;
-        }
+        else
+            return __endOutputStreamWithInfo(res, "wrong [type] argument", true/*show log*/);
 
-        log("use type: "+ type);
-        log("use fps: "+fps);
+        log("["+device+"]"+"use type: "+ type);
+        log("["+device+"]"+"use fps: "+fps);
 
-        if (cc===sharedContext) {
+        if (cc===devMgr[device].sharedContext) {
             /*
-            * kill incompatible shared child process and all consumers
+            * kill incompatible shared capture process and all consumers
             */
             if (cc.childProc && (cc.type != type || cc.fps < fps || type=="webm"/*todo: delete this condition*/))
-                __cleanup_all(cc, "there are already capture process running with different type or lower fps");
+                __cleanup_all(cc, "capture process running with different type or lower fps");
 
 
             if (!cc.childProc) {
@@ -440,7 +478,7 @@ function capture( res, type, device, fps /*from here is internal arguments*/, th
         theConsumer.id = ++cc.lastConsumerId;
         theConsumer.on_error = __cleanup.bind(null, theConsumer); //bound first argument=theConsumer
         cc.consumerMap[theConsumer.id] = theConsumer;
-        log("consumer " + theConsumer.id + " is added");
+        log("["+device+"]"+"consumer " + theConsumer.id + " is added");
 
         /*
         * set stream error handler to prevent from crashing
@@ -457,34 +495,19 @@ function capture( res, type, device, fps /*from here is internal arguments*/, th
             theConsumer.on_error("output stream is closed");
         });
 
-
-        /*
-        * run adb command to get first device serial number if not specified
-        */
-        if (!device) {
-            get_first_device_serial_number( function /*on_ok*/(device) {
-                capture(res, type, device, fps, theConsumer);
+        if (!cc.childProc) {
+            /*
+            * upload utility files if no running capture process
+            */
+            upload_file( device, function /*on_ok*/() {
+                capture(device, res, type, fps, theConsumer, cc);
             }, theConsumer.on_error);
             return;
         }
     }
-    else
-        cc = theConsumer.cc;
 
-    if (cc.childProc) {
-        logd("use existing child process");
-        return;
-    }
-
-    if (!__skip_upload) {
-        /*
-        * upload utility files if no running capture process
-        */
-        upload_file( device, function /*on_ok*/() {
-            capture(res, type, device, fps, theConsumer, true/*__skip_upload*/);
-        }, theConsumer.on_error);
-        return;
-    }
+    if (cc.childProc)
+        return log("["+device+"]"+"use existing capture process");
 
     //------------------------------------------------------------------------
     //------------------start new capture process ----------------------------
@@ -505,7 +528,7 @@ function capture( res, type, device, fps /*from here is internal arguments*/, th
         FFMPEG_OUTPUT="-f webm -vcodec libvpx -rc_lookahead 0 -qmin 0 -qmax 20 -b:v 1000k -";
 
     /*
-    * execute child process.
+    * execute capture process.
     */
     cc.childProc = spwan_child_process( [argv.adb, "-s", device, "shell", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
 
@@ -546,37 +569,41 @@ function __cleanup_all(cc, reason) {
 
 function __cleanup(consumer, reason) {
     var cc = consumer.cc;
-    log("clean_up consumer "+consumer.id + " of child process " + (cc.childProc?cc.childProc.pid:"?") + (reason ? (" due to "+reason) : ""));
+    log("["+cc.device+"]"+"clean_up consumer "+consumer.id + " of capture process " + (cc.childProc?cc.childProc.pid:"?") + (reason ? (" due to "+reason) : ""));
 
     //unsbscribe
     delete cc.consumerMap[consumer.id];
 
     //for http output stream, output reason
-    if (reason && consumer.res.writeHead) {
+    __endOutputStreamWithInfo(consumer.res, reason);
+
+    //if no consumer subscribe the output of capture process, then kill it
+    if (cc.childProc && !Object.keys(cc.consumerMap).length) {
+        log("["+cc.device+"]"+"kill capture process "+cc.childProc.pid+" due to all consumer are closed");
+        cc.childProc.stdout.removeListener("data", cc.on_childProc_stdout);
+        cc.childProc.stderr.removeListener("data", cc.on_childProc_stderr);
+        cc.childProc.removeListener("error", cc.on_childProc_error);
+        cc.childProc.removeListener("exit", cc.on_childProc_exit);
+        cc.childProc.kill(); //todo: Does this trigger close event? Cause memory leak?
+        cc.childProc = null;
+    }
+}
+
+function __endOutputStreamWithInfo(res, reason, showLog) {
+    if (reason) {
+        if (showLog)
+            log(showLog);
+    
         try {
-            consumer.res.writeHead(200, {"Content-Type": "text/html"});
-            consumer.res.write(reason);
+            res.writeHead(200, {"Content-Type": "text/html"});
+            res.write(reason);
         }
         catch(e) {
         }
     }
 
     //close output stream
-    consumer.res.end();  //OK, seems not trigger close event of the stream
-
-    //if no consumer subscribe the output of child process, then kill it
-    if (cc.childProc && !Object.keys(cc.consumerMap).length) {
-        log("kill child process "+cc.childProc.pid+" due to all consumer are closed");
-
-        //todo: really need this? what about private context?
-        cc.childProc.stdout.removeListener("data", cc.on_childProc_stdout);
-        cc.childProc.stderr.removeListener("data", cc.on_childProc_stderr);
-        cc.childProc.removeListener("error", cc.on_childProc_error);
-        cc.childProc.removeListener("exit", cc.on_childProc_exit);
-
-        cc.childProc.kill(); //todo: Does this trigger close event?
-        cc.childProc = null;
-    }
+    res.end();  //OK, seems not trigger close event of the stream
 }
 
 /*
@@ -742,7 +769,7 @@ function start_stream_server() {
     */
     app.get("/capture",function(req,res){
         log("process request: " + req.url);
-        capture(res, req.query.type, req.query.device, req.query.fps);
+        capture(req.query.device, res, req.query.type, req.query.fps);
     });
 
     /*
@@ -768,11 +795,11 @@ function start_stream_server() {
             }
             //show link of all devices
             else {
-                get_all_device_description( function /*on_ok*/(deviceMap) {
+                get_all_device_description( function /*on_ok*/() {
                     res.write("<table border=1><tr><th>device serial number</th><th>description</th><th>video/image</th></tr>");
 
-                    Object.keys(deviceMap).forEach( function(device) {
-                        var desc = deviceMap[device];
+                    Object.keys(devMgr).forEach( function(device) {
+                        var desc = devMgr[device].desc;
                         res.write("<tr><td>"+htmlEncode(device)+"</td><td>"+htmlEncode(desc.desc)+"</td><td>");
 
                         if (!desc.haveErr) {
@@ -788,7 +815,7 @@ function start_stream_server() {
                     res.write("</table>");
                     res.end();
                 }, function /*on_error*/(err) {
-                    res.end(err);
+                    res.end(htmlEncode(err));
                 }, req.query.device/*filter*/ );
             }
         }
@@ -818,6 +845,7 @@ function start_stream_server() {
             "Note: [device] argument can be omitted, which means the first connected device.\n"+
             "      [fps] argument means frames per second.\n"+
             "          It should be a floating point number in range ["+MIN_FPS+"-"+MAX_FPS+"].\n"+
+            "          For example, 0.5 means 1 frame every 2 seconds.\n"+
             "      Make sure that you have installed USB driver of your android.\n"+
             "      Connect USB cable to android, enable USB debug (only first time),\n"+
             "      and finally TURN ON screen(otherwise you see black screen), now enjoy it!"+

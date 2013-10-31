@@ -29,6 +29,7 @@ This product will do encoding in android by ffmpeg.<br/>
     to show help: node stream.js --help
 
 4. show webm video/animated png in menu page: http://localhost:3000<br/>
+recommend chrome browser.<br/>
 <br/>
     or embed video into your html page:<br/>
     &lt;video controls preload="none" autobuffer="false"&gt;<br/>
