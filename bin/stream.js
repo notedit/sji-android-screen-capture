@@ -44,7 +44,11 @@ var PNG_CACHE_LEN = PNG_FLUSH_LEN + PNG_TAIL_LEN-1;
 function log(msg) {
     if (log._lineNotEnded) process.stderr.write("\n");
      //write head as format 01/31 23:59:59.999
-    var x = new Date();
+    if (log.__dtNow)
+        log.__dtNow.setTime(Date.now());
+    else
+        log.__dtNow = new Date();
+    var x = log.__dtNow;
     process.stderr.write(("00"+x.getMonth()).slice(-2) + "/" + ("00"+x.getDay()).slice(-2) + " " + ("00"+x.getHours()).slice(-2) + ":" + ("00"+x.getMinutes()).slice(-2) + ":" + ("00"+x.getSeconds()).slice(-2) + "." + ("000"+x.getMilliseconds()).slice(-3)+" ");
     log_(msg);
     process.stderr.write("\n");
@@ -814,7 +818,7 @@ function start_stream_server() {
             "Note: [device] argument can be omitted, which means the first connected device.\n"+
             "      [fps] argument means frames per second.\n"+
             "          It should be a floating point number in range ["+MIN_FPS+"-"+MAX_FPS+"].\n"+
-            "      Please ensure that you have installed USB driver of your android.\n"+
+            "      Make sure that you have installed USB driver of your android.\n"+
             "      Connect USB cable to android, enable USB debug (only first time),\n"+
             "      and finally TURN ON screen(otherwise you see black screen), now enjoy it!"+
             "\n"
