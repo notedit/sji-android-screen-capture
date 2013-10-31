@@ -777,9 +777,9 @@ function start_stream_server() {
 
                         if (!desc.haveErr) {
                             if (!req.query.type || req.query.type=="webm")
-                                res.write('<a href="/?type=webm&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">webm video</a>');
+                                res.write('<a href="/?type=webm&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">WEBM video</a>');
                             if (!req.query.type || req.query.type=="png")
-                                res.write('<br/><a href="/?type=png&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">png image</a>');
+                                res.write('<br/><a href="/?type=png&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">PNG image</a>');
                         }
 
                         res.write("</td></tr>");
@@ -810,7 +810,7 @@ function start_stream_server() {
                 .replace("/capture?", rootUrl+"/capture?")
                 .replace("<%device%>", "12345678")
                 .replace("<%fps%>", 4) + "\n\n" +
-            "----Embed animated png into your web page. For example:\n"+
+            "----Embed animated PNG image into your web page. For example:\n"+
             fs.readFileSync(path.join("html","png.html")).toString()
                 .replace("/capture?", rootUrl+"/capture?")
                 .replace("<%device%>", "12345678")

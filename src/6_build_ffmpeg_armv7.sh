@@ -30,7 +30,7 @@ export CPPFLAGS="--sysroot=$SYS_ROOT"   #ubuntu NDK need this flag when check as
 
 ./configure --arch=armv7 --cpu=armv7-a --target-os=linux --enable-cross-compile --enable-static --prefix=./qj_armv7 --disable-doc \
 	--disable-ffplay --disable-ffprobe --disable-ffserver \
-	--disable-symver --enable-small --disable-debug \
+	--disable-symver --disable-debug \
 	--disable-everything \
 	\
 	--enable-protocol=pipe \
