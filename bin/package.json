@@ -1,0 +1,31 @@
+{
+  "name": "sji-android-screen-capture",
+  "version": "0.0.0",
+  "description": "html5 video capable",
+  "main": "stream.js",
+  "dependencies": {
+    "commander": "~2.0.0",
+    "express": "~3.4.4"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "--help"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sjitech/sji-android-screen-capture/bin"
+  },
+  "keywords": [
+    "sji",
+    "android",
+    "screen",
+    "capture",
+    "html5",
+    "video"
+  ],
+  "author": "osexp2003@gmail.com qian-jin@sji-inc.jp",
+  "license": "https://github.com/sjitech/sji-android-screen-capture/blob/master/LICENSE",
+  "bugs": {
+    "url": "https://github.com/sjitech/sji-android-screen-capture/issues"
+  }
+}
