@@ -525,7 +525,7 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
     /*
     * execute capture process.
     */
-    cc.childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
+    cc.childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "sh", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
 
     cc.childProc.stdout.on("data", cc.on_childProc_stdout);
     cc.childProc.stderr.on("data", cc.on_childProc_stderr);
