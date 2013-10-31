@@ -8,3 +8,5 @@ libvpx-v1.2.0
 *.bz2
 test*
 .scripted
+xcode.*
+*.xcworkspace
