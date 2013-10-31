@@ -185,15 +185,15 @@ function get_all_device_serial_number(on_ok, on_error, onlyFirst) {
 
     childProc.on("exit", function(ret) {
         if (ret===0) { //todo: Windows OS to be confirmed if invalid adb path
-            var deviceList = [];
+            var snList = [];
             result.split("\n").slice(1/*from second line*/, onlyFirst ? 1/*only one line*/ : undefined/*all lines*/)
             .forEach( function(lineStr) {
                 var parts = lineStr.split("\t");
                 if (parts.length > 1)
-                    deviceList.push(parts[0]);
+                    snList.push(parts[0]);
             });
-            if (deviceList.length)
-                on_ok( onlyFirst ? deviceList[0] : deviceList);
+            if (snList.length)
+                on_ok( onlyFirst ? snList[0] : snList);
             else
                 on_error("no any device");
         } else
@@ -205,9 +205,9 @@ function get_first_device_serial_number(on_ok, on_error) {
     return get_all_device_serial_number(on_ok, on_error, true/*onlyFirst*/);
 }
 
-function createDeviceContext(device) {
+function __createDeviceContext(sn) {
     return {
-        device: device,
+        sn: sn,
         desc: {desc:"Unkown", haveErr:true}
     };
 }
@@ -215,11 +215,9 @@ function createDeviceContext(device) {
 /*
 * get device description
 */
-function get_device_description(device, on_ok, on_error, timeoutMs) {
-    log("get_device_description for " + device);
-    
-    //run adb command to get description
-    var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "echo",
+function get_device_desc(sn, on_ok, on_error, timeoutMs) {
+    log("get_device_desc for " + sn);
+    var childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "echo",
         "`",
         "getprop", "ro.product.model", ";",
         "getprop", "o.build.version.incremental", ";",
@@ -230,10 +228,10 @@ function get_device_description(device, on_ok, on_error, timeoutMs) {
         "`"
         ], on_error );
 
-    var description = "";
+    var desc = "";
     childProc.stdout.on("data", function(buf) {
         log_(buf);
-        description += buf;
+        desc += buf;
     });
 
     childProc.stderr.on("data", log_);
@@ -252,14 +250,14 @@ function get_device_description(device, on_ok, on_error, timeoutMs) {
             clearTimeout(timer);
 
         if (ret===0) {
-            if (devMgr[device])
-                devMgr[device].desc = {desc: description, haveErr: false};
-            on_ok(description, isExpired);
+            if (devMgr[sn])
+                devMgr[sn].desc = {desc: desc, haveErr: false};
+            on_ok(desc, isExpired);
         }
         else {
             var err = "Invalid serial number or device is offline";
-            if (devMgr[device])
-                devMgr[device].desc = {desc: err, haveErr: true};
+            if (devMgr[sn])
+                devMgr[sn].desc = {desc: err, haveErr: true};
             on_error(err, isExpired);
         }
     });
@@ -268,50 +266,48 @@ function get_device_description(device, on_ok, on_error, timeoutMs) {
 /*
 * get all device description
 */
-function get_all_device_description(on_ok, on_error, filterDevice/*filter*/) {
-    get_all_device_serial_number(function/*on_ok*/(deviceList) {
-        //reduce deviceList
-        if (filterDevice) {
-            var found = false;
-            for(var j=0; j<deviceList.length; j++) {
-                if (deviceList[j]==filterDevice) {
-                    found = true;
-                    break;
-                }
-            }
-            if (found)
-                deviceList = [filterDevice];
-            else {
-                on_error("no such device: "+filterDevice);
-                return;
-            }
-        }
-
-        //ensure create all device context
-        deviceList.forEach( function(device) {
-            if (!devMgr[device]) devMgr[device] = createDeviceContext(device);
+function get_all_device_desc(on_ok, on_error, sn/*filter*/) {
+    get_all_device_serial_number(function/*on_ok*/(snList) {
+        //reset existence flag of all sn in devMgr
+        Object.keys(devMgr).forEach( function(sn) {
+            devMgr[sn].visible = false;
         });
+        //ensure create all device context
+        snList.forEach( function(sn) {
+            if (!devMgr[sn]) devMgr[sn] = __createDeviceContext(sn);
+            devMgr[sn].visible = true;
+        });
+    
+        //reduce snList
+        if (sn) {
+            if (snList.indexOf(sn) >=0)
+                snList = [sn];
+            else
+                return on_error("no such device serial number: "+sn);
+        }
 
         //get description of device one by one
         var i=0;
-        function __get_next_description() {
-            if (i < deviceList.length) {
-                var device = deviceList[i++];
+        function __get_next_device_desc() {
+            if (i < snList.length) {
+                var sn = snList[i++];
 
-                get_device_description(device, function/*on_ok*/(description, isExpired) {
+                get_device_desc(sn, function/*on_ok*/(desc, isExpired) {
                     if (!isExpired)
-                        __get_next_description();
+                        __get_next_device_desc();
                 }, function/*on_error*/(err, isExpired) {
                     if (!isExpired)
-                        __get_next_description();
+                        __get_next_device_desc();
                 }, 1000/*timeoutMs*/);
             }
             else {
+                //ok, got all device's description
                 on_ok();
             }
         }
 
-        __get_next_description();
+        //start query!
+        __get_next_device_desc();
 
     }, on_error);
 }
@@ -319,7 +315,7 @@ function get_all_device_description(on_ok, on_error, filterDevice/*filter*/) {
 /*
 * upload all necessary files to android
 */
-function upload_file(device, on_ok, on_error) {
+function upload_file(sn, on_ok, on_error) {
 
     var local_version = fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh_","ffmpeg.armv7")).mtime.valueOf().toString(36) + "." +
                         fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh_","ffmpeg.armv5")).mtime.valueOf().toString(36) + "." +
@@ -332,7 +328,7 @@ function upload_file(device, on_ok, on_error) {
 
     function __get_remote_version() {
         log("__get_remote_version");
-        var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "cat", argv.rdir+"/version", "2>","/dev/null"], on_error );
+        var childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "cat", argv.rdir+"/version", "2>","/dev/null"], on_error );
 
         var remote_version = "";
         childProc.stdout.on("data", function(buf) {
@@ -363,7 +359,7 @@ function upload_file(device, on_ok, on_error) {
 
     function __upload_file() {
         log("__upload_file");
-        var childProc = spwan_child_process( [argv.adb, "-s", device, "push", UPLOAD_LOCAL_DIR, argv.rdir], on_error );
+        var childProc = spwan_child_process( [argv.adb, "-s", sn, "push", UPLOAD_LOCAL_DIR, argv.rdir], on_error );
 
         childProc.stdout.on("data", log_);
         childProc.stderr.on("data", log_);
@@ -378,7 +374,7 @@ function upload_file(device, on_ok, on_error) {
 
     function __update_remote_version() {
         log("__update_remote_version");
-        var childProc = spwan_child_process( [argv.adb, "-s", device, "shell", "echo", local_version, ">", argv.rdir+"/version"], on_error );
+        var childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "echo", local_version, ">", argv.rdir+"/version"], on_error );
 
         childProc.stdout.on("data", function(buf) {
             log_(buf);
@@ -402,11 +398,11 @@ function upload_file(device, on_ok, on_error) {
 /*
 * create context for screen capture process of the device
 */
-function createCaptureContext(device, type, fps) {
+function __createCaptureContext(sn, type, fps) {
     var cc = {
         consumerMap: {},
         lastConsumerId: 0,
-        device: device,
+        sn: sn,
         type: type,
         fps: fps
     };
@@ -421,40 +417,41 @@ function createCaptureContext(device, type, fps) {
 /*
 * capture screen, send result to output stream and file
 */
-function capture( device, res, type, fps /*from here is internal arguments*/, theConsumer, cc ) {
+function capture( sn, res, type, fps /*from here is internal arguments*/, theConsumer, cc ) {
     /*
     * check arguments
     */
     if (!theConsumer) {
-        log("capture device:["+device+"] type:["+type+"] fps:["+fps+"]");
+        log("capture sn:["+sn+"] type:["+type+"] fps:["+fps+"]");
 
-        if (!device)
-            return __endOutputStreamWithInfo(res, "no [device] argument", true/*show log*/);
-        
+        if (!sn)
+            return __endOutputStreamWithInfo(res, "no [sn] argument", true/*show log*/);
+
         /*
         * ensure init device context and shared capture context of the device
         */
-        if (!devMgr[device]) devMgr[device] = createDeviceContext(device);
-        if (!devMgr[device].sharedContext) devMgr[device].sharedContext = createCaptureContext(device, type, fps);
+        if (!devMgr[sn]) devMgr[sn] = __createDeviceContext(sn);
+        if (!devMgr[sn].sharedCaptureContext) devMgr[sn].sharedCaptureContext = __createCaptureContext(sn, type, fps);
 
         /*
         * use shared capture context or private capture context according to type and fps
         */
+        var oldFps = fps;
         if (type=="png") {
             fps = check_fps(fps, 0/*min*/, MAX_FPS, argv.fps);
-            cc = fps ? devMgr[device].sharedContext : createCaptureContext(device, type, fps); //png+ fps 0 means single png, create a seperate process for it
+            cc = fps ? devMgr[sn].sharedCaptureContext : __createCaptureContext(sn, type, fps); //png+ fps 0 means single png, create a seperate process for it
         }
         else if (type=="webm") {
             fps = check_fps(fps, MIN_FPS, MAX_FPS, argv.fps);
-            cc = devMgr[device].sharedContext;
+            cc = devMgr[sn].sharedCaptureContext;
         }
         else
             return __endOutputStreamWithInfo(res, "wrong [type] argument", true/*show log*/);
 
-        log("["+device+"]"+"use type: "+ type);
-        log("["+device+"]"+"use fps: "+fps);
+        if (fps!=oldFps)
+            log("["+sn+"]"+"use fps: "+fps);
 
-        if (cc===devMgr[device].sharedContext) {
+        if (cc===devMgr[sn].sharedCaptureContext) {
             /*
             * kill incompatible shared capture process and all consumers
             */
@@ -478,7 +475,7 @@ function capture( device, res, type, fps /*from here is internal arguments*/, th
         theConsumer.id = ++cc.lastConsumerId;
         theConsumer.on_error = __cleanup.bind(null, theConsumer); //bound first argument=theConsumer
         cc.consumerMap[theConsumer.id] = theConsumer;
-        log("["+device+"]"+"consumer " + theConsumer.id + " is added");
+        log("["+sn+"]"+"consumer " + theConsumer.id + " is added");
 
         /*
         * set stream error handler to prevent from crashing
@@ -495,19 +492,17 @@ function capture( device, res, type, fps /*from here is internal arguments*/, th
             theConsumer.on_error("output stream is closed");
         });
 
-        if (!cc.childProc) {
+        if (!cc.childProc)
             /*
             * upload utility files if no running capture process
             */
-            upload_file( device, function /*on_ok*/() {
-                capture(device, res, type, fps, theConsumer, cc);
+            return upload_file( sn, function /*on_ok*/() {
+                capture(sn, res, type, fps, theConsumer, cc);
             }, theConsumer.on_error);
-            return;
-        }
     }
 
     if (cc.childProc)
-        return log("["+device+"]"+"use existing capture process");
+        return log("["+sn+"]"+"use existing capture process");
 
     //------------------------------------------------------------------------
     //------------------start new capture process ----------------------------
@@ -530,7 +525,7 @@ function capture( device, res, type, fps /*from here is internal arguments*/, th
     /*
     * execute capture process.
     */
-    cc.childProc = spwan_child_process( [argv.adb, "-s", device, "shell", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
+    cc.childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
 
     cc.childProc.stdout.on("data", cc.on_childProc_stdout);
     cc.childProc.stderr.on("data", cc.on_childProc_stderr);
@@ -569,7 +564,7 @@ function __cleanup_all(cc, reason) {
 
 function __cleanup(consumer, reason) {
     var cc = consumer.cc;
-    log("["+cc.device+"]"+"clean_up consumer "+consumer.id + " of capture process " + (cc.childProc?cc.childProc.pid:"?") + (reason ? (" due to "+reason) : ""));
+    log("["+cc.sn+"]"+"clean_up consumer "+consumer.id + " of capture process " + (cc.childProc?cc.childProc.pid:"?") + (reason ? (" due to "+reason) : ""));
 
     //unsbscribe
     delete cc.consumerMap[consumer.id];
@@ -579,7 +574,7 @@ function __cleanup(consumer, reason) {
 
     //if no consumer subscribe the output of capture process, then kill it
     if (cc.childProc && !Object.keys(cc.consumerMap).length) {
-        log("["+cc.device+"]"+"kill capture process "+cc.childProc.pid+" due to all consumer are closed");
+        log("["+cc.sn+"]"+"kill capture process "+cc.childProc.pid+" due to all consumer are closed");
         cc.childProc.stdout.removeListener("data", cc.on_childProc_stdout);
         cc.childProc.stderr.removeListener("data", cc.on_childProc_stderr);
         cc.childProc.removeListener("error", cc.on_childProc_error);
@@ -795,21 +790,23 @@ function start_stream_server() {
             }
             //show link of all devices
             else {
-                get_all_device_description( function /*on_ok*/() {
+                get_all_device_desc( function /*on_ok*/() {
                     res.write("<table border=1><tr><th>device serial number</th><th>description</th><th>video/image</th></tr>");
 
-                    Object.keys(devMgr).forEach( function(device) {
-                        var desc = devMgr[device].desc;
-                        res.write("<tr><td>"+htmlEncode(device)+"</td><td>"+htmlEncode(desc.desc)+"</td><td>");
+                    Object.keys(devMgr).forEach( function(sn) {
+                        if (devMgr[sn].visible) {
+                            var desc = devMgr[sn].desc;
+                            res.write("<tr><td>"+htmlEncode(sn)+"</td><td>"+htmlEncode(desc.desc)+"</td><td>");
 
-                        if (!desc.haveErr) {
-                            if (!req.query.type || req.query.type=="webm")
-                                res.write('<a href="/?type=webm&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">WEBM video</a>');
-                            if (!req.query.type || req.query.type=="png")
-                                res.write('<br/><a href="/?type=png&device='+querystring.escape(device)+'&fps='+querystring.escape(fps)+'">PNG image</a>');
+                            if (!desc.haveErr) {
+                                if (!req.query.type || req.query.type=="webm")
+                                    res.write('<a href="/?type=webm&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">WEBM video</a>');
+                                if (!req.query.type || req.query.type=="png")
+                                    res.write('<br/><a href="/?type=png&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">PNG image</a>');
+                            }
+
+                            res.write("</td></tr>");
                         }
-
-                        res.write("</td></tr>");
                     });
 
                     res.write("</table>");
