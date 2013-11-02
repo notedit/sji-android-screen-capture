@@ -38,11 +38,11 @@ for webm video, recommend chrome browser.<br/>
     &lt;img src="http://localhost:3000/capture?device=yourDeviceSerialNumber&type=png&fps=4" /&gt;<br/>
 
 [Note]<br/>
-    Currently tested in android 4.2, 4.1, 2.2.  Performance is slow.<br/>
+    Currently tested in android 4.2, 4.1, 2.2.<br/>
+    Host OS can be Windows OS or Mac OS X.<br/>
     src/build_all.sh has been tested in Mac OS X 10.7 64bit and Ubuntu 12 64bit.
     android NDK r8 or r9. Gcc 4.4.3 or 4.8 
 
 [Todo]<br/>
-    enhance performance! (raw screen data feed to shared memory..., adjust parameter of ffmpeg)<br/>
-    make a tiny site which list all device and options to show or record video.<br/>
+    enhance performance!<br/>
     many many...
