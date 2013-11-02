@@ -26,19 +26,27 @@ var argv = (function() {
         .option("--rdir <android dir>", "android work dir. Default is "+(__def="/data/local/tmp/sji-asc"), __def)
         .option("--fps <floating point number in range["+MIN_FPS+"-"+MAX_FPS+"]>", "default frames per second. Default is "+(__def=10), __def)
         .option("--verbose", "enable detail log")
-        .option("--dump", "enable dump data (hex)")
+        .option("--dump", "enable dump first 32 byte of raw data when received from adb")
         .parse(process.argv);
 })();
 
 //************************global var  ****************************************************
 var UPLOAD_LOCAL_DIR="android"; //based on current file directory
 var CR=0xd, LF=0xa;
-var BUF_CR = new Buffer([CR]);
+var BUF_CR2 = new Buffer([CR,CR]);
+var BUF_CR = BUF_CR2.slice(0,1);
 var BOUNDARY_STR = "----boundary----";
 var BOUNDARY_AND_PNG_TYPE = new Buffer(BOUNDARY_STR+"\r\nContent-Type: image/png\r\n\r\n");
+var PNG_CACHE_LEN = 4096;
 var PNG_TAIL_LEN = 8;
-var PNG_FLUSH_LEN = 4096;
-var PNG_CACHE_LEN = PNG_FLUSH_LEN + PNG_TAIL_LEN-1;
+
+var isWinOS = process.platform.match(/^win/);
+var isMacOS = process.platform.match(/^darwin/);
+var adbNewLineSeqCrCount = isWinOS ? 2 : isMacOS ? 1 : 0; //will be set again when call __get_remote_version
+var re_adbNewLineSeq = /\r?\r?\n$/;
+var re_toBeEscapedCharForShell = isWinOS ? /["]/g : /["'><&|;(){}`$]/g;
+var re_toBeQuotedCharForShell = isWinOS ? /[><&|%]/g : null;
+var re_whitespace = /\s/g;
 
 //device manager (Key: device serial number)
 var devMgr = {
@@ -86,12 +94,14 @@ function delayAbort(err) {
     },0);
 }
 
-var regex_meta_shell_char = /[><;&|(){},`$"']/g;
 function __escapeChar(c) {
     return "\\"+c;
 }
+function __quoteChar(c) {
+    return "\""+c+"\"";
+}
 
-function spwan_child_process(args, on_error) {
+function spawn_child_process(args, on_error) {
     var childProc;
 
     function on_parent_exit(){
@@ -100,15 +110,15 @@ function spwan_child_process(args, on_error) {
     }
     process.on("exit", on_parent_exit);
 
+    //just to make a display string of command line
     var cmdline = "";
     args.forEach(function(arg) {
-        arg = String(arg).replace(regex_meta_shell_char, __escapeChar);
-        if (arg.indexOf(" ") >= 0) {
-            if (arg.indexOf("\"") >= 0)
-                arg.replace(" ", "\\ ");
-            else
-                arg = '"' + arg + '"';
-        }
+        arg = String(arg).replace(re_toBeEscapedCharForShell, __escapeChar);
+		if (re_toBeQuotedCharForShell) arg = arg.replace(re_toBeQuotedCharForShell, __quoteChar);
+        if (arg.indexOf('"')>=0)
+            arg = arg.replace(re_whitespace, __escapeChar);
+        else if (re_whitespace.test(arg))
+            arg = '"' + arg + '"';
         cmdline += " " + arg;
     });
     log("spwan child process:\n"+cmdline);
@@ -117,7 +127,7 @@ function spwan_child_process(args, on_error) {
     log("child process pid: "+childProc.pid);
 
     childProc.on("error", function(err){
-        err = "spwan_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")";//Windows OS return strange error text
+        err = "spawn_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")";//Windows OS return strange error text
         logd(err);
         process.removeListener("exit", on_parent_exit);
         on_error(err);
@@ -155,13 +165,13 @@ function check_fps(fps, min, max, def) {
 */
 function check_adb(on_ok, on_error) {
     log("check_adb");
-    var childProc = spwan_child_process( [argv.adb, "version"], on_error );
+    var childProc = spawn_child_process( [argv.adb, "version"], on_error );
 
     childProc.stdout.on("data", log_);
     childProc.stderr.on("data", log_);
 
     childProc.on("exit", function(ret) {
-        if (ret===0) //todo: Windows OS to be confirmed if invalid adb path
+        if (ret===0)
             on_ok();
         else
             on_error("check_adb failed (ret!=0)");
@@ -173,7 +183,7 @@ function check_adb(on_ok, on_error) {
 */
 function get_all_device_serial_number(on_ok, on_error, onlyFirst) {
     log("get_all_device_serial_number "+(onlyFirst?"(onlyFirst)":""));
-    var childProc = spwan_child_process( [argv.adb, "devices"], on_error );
+    var childProc = spawn_child_process( [argv.adb, "devices"], on_error );
 
     var result = "";
     childProc.stdout.on("data", function(buf) {
@@ -184,7 +194,7 @@ function get_all_device_serial_number(on_ok, on_error, onlyFirst) {
     childProc.stderr.on("data", log_);
 
     childProc.on("exit", function(ret) {
-        if (ret===0) { //todo: Windows OS to be confirmed if invalid adb path
+        if (ret===0) {
             var snList = [];
             result.split("\n").slice(1/*from second line*/, onlyFirst ? 1/*only one line*/ : undefined/*all lines*/)
             .forEach( function(lineStr) {
@@ -217,7 +227,7 @@ function __createDeviceContext(sn) {
 */
 function get_device_desc(sn, on_ok, on_error, timeoutMs) {
     log("get_device_desc for " + sn);
-    var childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "echo",
+    var childProc = spawn_child_process( [argv.adb, "-s", sn, "shell", "echo",
         "`",
         "getprop", "ro.product.model", ";",
         "getprop", "o.build.version.incremental", ";",
@@ -250,6 +260,7 @@ function get_device_desc(sn, on_ok, on_error, timeoutMs) {
             clearTimeout(timer);
 
         if (ret===0) {
+            desc = desc.replace(re_adbNewLineSeq, "");
             if (devMgr[sn])
                 devMgr[sn].desc = {desc: desc, haveErr: false};
             on_ok(desc, isExpired);
@@ -277,7 +288,7 @@ function get_all_device_desc(on_ok, on_error, sn/*filter*/) {
             if (!devMgr[sn]) devMgr[sn] = __createDeviceContext(sn);
             devMgr[sn].visible = true;
         });
-    
+
         //reduce snList
         if (sn) {
             if (snList.indexOf(sn) >=0)
@@ -312,6 +323,12 @@ function get_all_device_desc(on_ok, on_error, sn/*filter*/) {
     }, on_error);
 }
 
+function __delete_adbNewLineSeq_and_remember(adbNewLineSeq) {
+    adbNewLineSeqCrCount = adbNewLineSeq.length-1;
+    log("adbNewLineSeqCrCount:"+adbNewLineSeqCrCount);
+    return "";
+}
+
 /*
 * upload all necessary files to android
 */
@@ -322,13 +339,14 @@ function upload_file(sn, on_ok, on_error) {
                         fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh_","get-raw-image-4.1.2")).mtime.valueOf().toString(36) + "." +
                         fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh_","get-raw-image-4")).mtime.valueOf().toString(36) + "." +
                         fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh_","get-raw-image-old")).mtime.valueOf().toString(36) + "." +
-                        fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh")).mtime.valueOf().toString(36);
+                        fs.statSync(path.join(UPLOAD_LOCAL_DIR,"run.sh")).mtime.valueOf().toString(36) + "." +
+                        fs.statSync(__filename).mtime.valueOf().toString(36);
 
     __get_remote_version();
 
     function __get_remote_version() {
         log("__get_remote_version");
-        var childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "cat", argv.rdir+"/version", "2>","/dev/null"], on_error );
+        var childProc = spawn_child_process( [argv.adb, "-s", sn, "shell", "echo", "`", "cat", argv.rdir+"/version", "`"], on_error );
 
         var remote_version = "";
         childProc.stdout.on("data", function(buf) {
@@ -344,8 +362,7 @@ function upload_file(sn, on_ok, on_error) {
 
         childProc.on("exit", function(ret) {
             if (__get_remote_version.err) return;
-            remote_version = remote_version.replace("\r\n","").replace("\n","");
-
+            remote_version = remote_version.replace(re_adbNewLineSeq, __delete_adbNewLineSeq_and_remember);
             if (remote_version==local_version) {
                 log("same as local version");
                 on_ok();
@@ -359,7 +376,7 @@ function upload_file(sn, on_ok, on_error) {
 
     function __upload_file() {
         log("__upload_file");
-        var childProc = spwan_child_process( [argv.adb, "-s", sn, "push", UPLOAD_LOCAL_DIR, argv.rdir], on_error );
+        var childProc = spawn_child_process( [argv.adb, "-s", sn, "push", UPLOAD_LOCAL_DIR, argv.rdir], on_error );
 
         childProc.stdout.on("data", log_);
         childProc.stderr.on("data", log_);
@@ -374,7 +391,7 @@ function upload_file(sn, on_ok, on_error) {
 
     function __update_remote_version() {
         log("__update_remote_version");
-        var childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "echo", local_version, ">", argv.rdir+"/version"], on_error );
+        var childProc = spawn_child_process( [argv.adb, "-s", sn, "shell", "echo", local_version, ">", argv.rdir+"/version"], on_error );
 
         childProc.stdout.on("data", function(buf) {
             log_(buf);
@@ -525,7 +542,7 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
     /*
     * execute capture process.
     */
-    cc.childProc = spwan_child_process( [argv.adb, "-s", sn, "shell", "sh", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
+    cc.childProc = spawn_child_process( [argv.adb, "-s", sn, "shell", "sh", argv.rdir+"/run.sh", fps, fps||1, FFMPEG_OUTPUT, "2>", argv.rlog], theConsumer.on_error );
 
     cc.childProc.stdout.on("data", cc.on_childProc_stdout);
     cc.childProc.stderr.on("data", cc.on_childProc_stderr);
@@ -534,8 +551,8 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
 }
 
 function __on_childProc_stdout(cc, buf) {
-    logd_(buf.length);
-    __convertCRLFtoLF(cc, buf).forEach( function(buf) {
+    logd_(buf.length+":");
+    __convertAdbNewLineSeqToLF(cc, buf).forEach( function(buf) {
         if (cc.type=="png")
             __writePng(cc, buf, 0, buf.length);
         else if (cc.type=="webm")
@@ -549,7 +566,7 @@ function __on_childProc_stderr(cc, buf) {
 }
 
 function __on_childProc_error(cc, err) {
-    __cleanup_all(cc, "spwan_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")" );
+    __cleanup_all(cc, "spawn_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")" );
 }
 
 function __on_childProc_exit(cc, ret, signal) {
@@ -563,6 +580,10 @@ function __cleanup_all(cc, reason) {
 }
 
 function __cleanup(consumer, reason) {
+    //prevent endless loop by error event of the output stream
+    if (consumer.didCleanup) return;
+    consumer.didCleanup = true;
+
     var cc = consumer.cc;
     log("["+cc.sn+"]"+"clean_up consumer "+consumer.id + " of capture process " + (cc.childProc?cc.childProc.pid:"?") + (reason ? (" due to "+reason) : ""));
 
@@ -579,7 +600,7 @@ function __cleanup(consumer, reason) {
         cc.childProc.stderr.removeListener("data", cc.on_childProc_stderr);
         cc.childProc.removeListener("error", cc.on_childProc_error);
         cc.childProc.removeListener("exit", cc.on_childProc_exit);
-        cc.childProc.kill(); //todo: Does this trigger close event? Cause memory leak?
+        cc.childProc.kill(); //todo: seems does not trigger close event. But cause memory leak?
         cc.childProc = null;
     }
 }
@@ -588,7 +609,7 @@ function __endOutputStreamWithInfo(res, reason, showLog) {
     if (reason) {
         if (showLog)
             log(showLog);
-    
+
         try {
             res.writeHead(200, {"Content-Type": "text/html"});
             res.write(reason);
@@ -598,7 +619,9 @@ function __endOutputStreamWithInfo(res, reason, showLog) {
     }
 
     //close output stream
-    res.end();  //OK, seems not trigger close event of the stream
+    try {
+        res.end();  //OK, seems not trigger close event of the stream. BUT may cause error event of res. Such as stdout.end() canse error event
+    } catch(e) {}
 }
 
 /*
@@ -652,11 +675,11 @@ function __writePng(cc, buf, pos, endPos) {
         */
         else if (cc.pngCacheLength == PNG_CACHE_LEN) {
             //move some cc.pngCache data to output stream if big enough
-            cc.pngCacheLength = PNG_FLUSH_LEN;
+            cc.pngCacheLength = PNG_CACHE_LEN-(PNG_TAIL_LEN-1);
             Object.keys(cc.consumerMap).forEach(__writePngCache);
-
-            cc.pngCache.copy( cc.pngCache, 0, PNG_FLUSH_LEN);
-            cc.pngCacheLength = PNG_CACHE_LEN-PNG_FLUSH_LEN;
+            //copy last PNG_TAIL_LEN-1 byte to head
+            cc.pngCache.copy( cc.pngCache, 0, PNG_CACHE_LEN-(PNG_TAIL_LEN-1));
+            cc.pngCacheLength = PNG_TAIL_LEN-1;
         }
     }
 
@@ -687,53 +710,79 @@ function __writeWebm(cc, buf, pos, endPos) {
 } //end of __writeWebm()
 
 /*
-* convert CRLF to LF, return array of converted buf
+* convert CRLF(Mac) or CRCRLF(Windows) to LF, return array of converted buf
 */
-function __convertCRLFtoLF(cc, buf) {
+function __convertAdbNewLineSeqToLF(cc, buf) {
     if (argv.dump)
-        log(buf.toString("hex"));
+        log("    " + buf.slice(0,32).toString("hex"));
 
-    var prependCR = false;
-    var lastTime;
+    if (!adbNewLineSeqCrCount) return [buf]; //lucky! no CR prepended, so need not convert.
 
-    if (cc.hasOrphanCR) {
-        if (buf[0] != LF) {
-            prependCR = true;
-            //logd_("r");
-            if (argv.verbose) {
-                var diffMs = new Date()-lastTime;
-                if (diffMs > 100) {
-                    //logd_("L"+diffMs);
-                }
-            }
-        }
-        cc.hasOrphanCR = false;
+    var bufAry = [];
+    var startPos = 0;
+
+    /*
+    * Resolve orphan [CR,CR] or [CR] which are produced by previous call of this function.
+    * If it is followed by [LF] or [CR,LF], then they together are treated as a [LF],
+    * Otherwise, the orphan seq will be output normally.
+    */
+    if (cc.orphanCrCount) {
+        var restCrCount = adbNewLineSeqCrCount-cc.orphanCrCount;
+        // if adbNewLineSeq is found then skip rest CR, start from LF. Otherwise push orphan CR into result
+        if (!restCrCount && buf[0] ==LF || restCrCount && buf[0]==CR && buf.length>1 && buf[1]==LF)
+            startPos = restCrCount;
+        else
+            bufAry.push(cc.orphanCrCount==2?BUF_CR2:BUF_CR);
+        cc.orphanCrCount = 0;
     }
 
-    //convert CRLF to LF
-    var len = buf.length;
-    for(var i=0; i<len; i++) {
+    /*
+    * convert CRLF or CRCRLF to LF
+    */
+    var crCount = 0;
+    for (var i=startPos; i < buf.length; i++) {
         if (buf[i]==CR) {
-            if (i+1<len) {
-                if (buf[i+1]==LF ) {
-                    //logd_("n");
-                    buf.copy(buf, i, i+1);
-                    len--;
-                }
+            crCount++;
+            
+            /*
+            *if no more data to match adbNewLineSeq, then save it as orphan CR which will
+            *be processed by next call of this function
+            */
+            if (i+1==buf.length) {
+                cc.orphanCrCount = Math.min(crCount, adbNewLineSeqCrCount);
+                //commit data in range from last start positon to current position-orphanCrCount
+                if (startPos < buf.length-cc.orphanCrCount)
+                    bufAry.push(buf.slice(startPos, buf.length-cc.orphanCrCount));
+                    
+                return bufAry;
             }
-            else {
-                cc.hasOrphanCR = true;
-                len--;
-                break;
+        }
+        else {
+            /*
+            * if found 2 or 2 CR followed by LF, then CR will be discarded.
+            * and data before CR will be pushed to result.
+            */
+            if (crCount >= adbNewLineSeqCrCount && buf[i]==LF) {
+                //commit data in range from last start positon to current position-adbNewLineSeqCrCount
+                bufAry.push(buf.slice(startPos, i-adbNewLineSeqCrCount));
+                startPos = i;
             }
+            
+            crCount = 0;
         }
     }
 
-    if (argv.verbose)
-        lastTime = new Date();
+    bufAry.push(buf.slice(startPos));
 
-    return prependCR ? [BUF_CR, buf.slice(0,len)] : [buf.slice(0,len)];
-}//end of __convertCRLFtoLF()
+    if (argv.dump) {
+        var s = "";
+        bufAry.forEach(function(buf){
+            s += buf.toString("hex");
+        });
+        log(" to " + s.slice(0,64));
+    }
+    return bufAry;
+}//end of __convertAdbNewLineSeqToLF()
 
 function __write(res, bufOrString ) {
     logd_(">");
@@ -748,16 +797,19 @@ function start_stream_server() {
     log("start_stream_server");
 
     var app = express();
+
+    //some middle module write output to stdout, this is not what i want!
+    //todo: remove express totally.
     // Server settings
     //app.set("views", path.join(__dirname, "views"));
     //app.set("view engine", "ejs");
-    app.use(express.favicon());
-    app.use(express.logger("dev"));
-    app.use(express.bodyParser());
-    app.use(express.methodOverride());
-    app.use(app.router);
+    //app.use(express.favicon());
+    //app.use(express.logger("dev"));
+    //app.use(express.bodyParser());
+    //app.use(express.methodOverride());
+    //app.use(app.router);
     //app.use("/", express["static"](path.join(__dirname, "html")));
-    app.use(express.errorHandler());
+    //app.use(express.errorHandler());
 
     /*
     * serve webm video or png image
