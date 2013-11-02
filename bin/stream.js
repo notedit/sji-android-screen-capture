@@ -895,7 +895,7 @@ function start_stream_server() {
             "      [fps] argument means frames per second.\n"+
             "          It should be a floating point number in range ["+MIN_FPS+"-"+MAX_FPS+"].\n"+
             "          For example, 0.5 means 1 frame every 2 seconds.\n"+
-            "      Make sure that you have installed USB driver of your android.\n"+
+            "      Please install latest Android SDK and USB driver of your android.\n"+
             "      Connect USB cable to android, enable USB debug (only first time),\n"+
             "      and finally TURN ON screen(otherwise you see black screen), now enjoy it!"+
             "\n"
