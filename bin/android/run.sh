@@ -1,6 +1,6 @@
 
 #Note: if you edit this file on Windows OS, please be sure to use
-#unix style new line code, i mean 0xA (LF). Do not save 0xD 0xA!
+#UNIX style new line code, i mean 0xA (LF). Do not save 0xD 0xA!
 
 log() {
     echo $* >&2
