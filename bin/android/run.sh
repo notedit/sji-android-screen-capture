@@ -21,15 +21,15 @@ log "test get-raw-image version"
 { GET_RAW_IMG_EXEC_FILE="./get-raw-image-4.1.2"; log "trying $GET_RAW_IMG_EXEC_FILE"; IMG_FORMAT=`$GET_RAW_IMG_EXEC_FILE`; } || \
 { GET_RAW_IMG_EXEC_FILE="./get-raw-image-4"    ; log "trying $GET_RAW_IMG_EXEC_FILE"; IMG_FORMAT=`$GET_RAW_IMG_EXEC_FILE`; } || \
 { GET_RAW_IMG_EXEC_FILE="./get-raw-image-old"  ; log "trying $GET_RAW_IMG_EXEC_FILE"; IMG_FORMAT=`$GET_RAW_IMG_EXEC_FILE`; } || \
-{ log "Failed to get-raw-image"; exit 1; }
+{ log "Failed to test get-raw-image and get image format"; exit 1; }
 
-log "use imageformat: $IMG_FORMAT"
 log "use GET_RAW_IMG_EXEC_FILE: $GET_RAW_IMG_EXEC_FILE"
+log "use imageformat: $IMG_FORMAT"
 
 log "test ffmpeg cpu version"
 { FFMPEG_EXEC_FILE="./ffmpeg.armv7"; log "trying $FFMPEG_EXEC_FILE"; FFMPEG_VER=`$FFMPEG_EXEC_FILE -version`; } || \
 { FFMPEG_EXEC_FILE="./ffmpeg.armv5"; log "trying $FFMPEG_EXEC_FILE"; FFMPEG_VER=`$FFMPEG_EXEC_FILE -version`; } || \
-{ log "Failed to load ffmpeg"; exit 1; }
+{ log "Failed test load ffmpeg"; exit 1; }
 
 log "use FFMPEG_EXEC_FILE: $FFMPEG_EXEC_FILE"
 
