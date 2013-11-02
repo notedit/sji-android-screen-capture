@@ -9,9 +9,9 @@ log() {
 log "------------------- `date` ----------------------"
 cd ${0}_ || exit 1  #cd run.sh_ sub directory
 
-FEED_FPS="$1"; shift || exit 1  #first argument as frames_per_second
-FFMPEG_FPS="$1"; shift || exit 1  #second argument as frames_per_second
-FFMPEG_OUTPUT="$@" #get all other arguments from third argument
+FEED_FPS="$1"; shift || { log "expect arg1: frames_per_second of raw image"; exit 1; }
+FFMPEG_FPS="$1"; shift || { log "exepect arg2: frames_per_second for ffmpeg input"; exit 1; }
+FFMPEG_OUTPUT="$@"; shift || { log "exepect arg3-...: ffmpeg output"; exit 1; }
 
 #set file as executable
 chmod 755 * | exit 1
