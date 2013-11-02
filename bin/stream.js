@@ -1,11 +1,11 @@
 //************************import module  *************************************************
-var express = require("express");
 var commander = require("commander");
 
 var http = require("http");
 var child_process = require("child_process");
 var fs = require("fs");
 var path = require("path");
+var url = require("url");
 var querystring = require("querystring");
 
 //************************command line  **************************************************
@@ -128,13 +128,13 @@ function spawn_child_process(args, on_error) {
 
     childProc.on("error", function(err){
         err = "spawn_child_process failed ("+String(err).replace("spawn OK","spawn failed")+")";//Windows OS return strange error text
-        logd(err);
+        log(err);
         process.removeListener("exit", on_parent_exit);
         on_error(err);
     });
 
     childProc.on("exit", function(ret, signal) {
-        logd("child process "+childProc.pid+" exited (ret:"+ret+", sig:"+signal+")");
+        log("child process "+childProc.pid+" exited (ret:"+ret+", sig:"+signal+")");
         process.removeListener("exit", on_parent_exit);
     });
 
@@ -792,92 +792,90 @@ function __write(res, bufOrString ) {
         logd_("&");
 }
 
+function preprocessReq(req) {
+    req.query = url.parse(req.url,true/*querystring*/).query;
+}
+
+/*
+* serve menu page and video/image container page
+*/
+function serve_menu(req,res) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
+    res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
+    res.setHeader("Expires", 0); // Proxies.
+    res.writeHead(200, {"Content-Type": "text/html"});
+
+    var fps = check_fps(req.query.fps, (req.query.type=="png" ? 0/*min*/ : MIN_FPS), MAX_FPS, "");
+
+    if (!req.query.type || req.query.type=="webm" || req.query.type=="png") {
+        //show video/image html for specific device
+        if (req.query.type && req.query.device) {
+            res.end( "Please turn on screen of the android smartphone<br/>\n" +
+                fs.readFileSync(path.join("html",req.query.type+".html")).toString()
+                    .replace("<%device%>", req.query.device)
+                    .replace("<%fps%>", fps)
+            );
+        }
+        //show link of all devices
+        else {
+            get_all_device_desc( function /*on_ok*/() {
+                res.write("<table border=1><tr><th>device serial number</th><th>description</th><th>video/image</th></tr>");
+
+                Object.keys(devMgr).forEach( function(sn) {
+                    if (devMgr[sn].visible) {
+                        var desc = devMgr[sn].desc;
+                        res.write("<tr><td>"+htmlEncode(sn)+"</td><td>"+htmlEncode(desc.desc)+"</td><td>");
+
+                        if (!desc.haveErr) {
+                            if (!req.query.type || req.query.type=="webm")
+                                res.write('<a href="/?type=webm&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">WEBM video</a>');
+                            if (!req.query.type || req.query.type=="png")
+                                res.write('<br/><a href="/?type=png&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">PNG image</a>');
+                        }
+
+                        res.write("</td></tr>");
+                    }
+                });
+
+                res.write("</table>");
+                res.end();
+            }, function /*on_error*/(err) {
+                res.end(htmlEncode(err));
+            }, req.query.device/*filter*/ );
+        }
+    }
+    else if (req.query.type) {
+        res.end("no such type");
+    }
+}
 
 function start_stream_server() {
     log("start_stream_server");
-
-    var app = express();
-
-    //some middle module write output to stdout, this is not what i want!
-    //todo: remove express totally.
-    // Server settings
-    //app.set("views", path.join(__dirname, "views"));
-    //app.set("view engine", "ejs");
-    //app.use(express.favicon());
-    //app.use(express.logger("dev"));
-    //app.use(express.bodyParser());
-    //app.use(express.methodOverride());
-    //app.use(app.router);
-    //app.use("/", express["static"](path.join(__dirname, "html")));
-    //app.use(express.errorHandler());
-
-    /*
-    * serve webm video or png image
-    */
-    app.get("/capture",function(req,res){
+    
+    function handler(req, res) {
+        if (req.method!="GET") return;
         log("process request: " + req.url);
-        capture(req.query.device, res, req.query.type, req.query.fps);
-    });
-
-    /*
-    * menu page
-    */
-    app.get("/",function(req,res){
-        log("process request: " + req.url);
-        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
-        res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
-        res.setHeader("Expires", 0); // Proxies.
-        res.writeHead(200, {"Content-Type": "text/html"});
-
-        var fps = check_fps(req.query.fps, (req.query.type=="png" ? 0/*min*/ : MIN_FPS), MAX_FPS, "");
-
-        if (!req.query.type || req.query.type=="webm" || req.query.type=="png") {
-            //show video/image html for specific device
-            if (req.query.type && req.query.device) {
-                res.end( "Please turn on screen of the android smartphone<br/>\n" +
-                    fs.readFileSync(path.join("html",req.query.type+".html")).toString()
-                        .replace("<%device%>", req.query.device)
-                        .replace("<%fps%>", fps)
-                );
-            }
-            //show link of all devices
-            else {
-                get_all_device_desc( function /*on_ok*/() {
-                    res.write("<table border=1><tr><th>device serial number</th><th>description</th><th>video/image</th></tr>");
-
-                    Object.keys(devMgr).forEach( function(sn) {
-                        if (devMgr[sn].visible) {
-                            var desc = devMgr[sn].desc;
-                            res.write("<tr><td>"+htmlEncode(sn)+"</td><td>"+htmlEncode(desc.desc)+"</td><td>");
-
-                            if (!desc.haveErr) {
-                                if (!req.query.type || req.query.type=="webm")
-                                    res.write('<a href="/?type=webm&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">WEBM video</a>');
-                                if (!req.query.type || req.query.type=="png")
-                                    res.write('<br/><a href="/?type=png&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">PNG image</a>');
-                            }
-
-                            res.write("</td></tr>");
-                        }
-                    });
-
-                    res.write("</table>");
-                    res.end();
-                }, function /*on_error*/(err) {
-                    res.end(htmlEncode(err));
-                }, req.query.device/*filter*/ );
-            }
+        if (/^\/capture¥?/.test(req.url)) { //url: /capture
+            preprocessReq(req);
+            /*
+            * serve webm video or png image
+            */
+            capture(req.query.device, res, req.query.type, req.query.fps);
         }
-        else if (req.query.type) {
-            res.end("no such type");
+        else if (/^\/¥??/.test(req.url)) { // url: /
+            preprocessReq(req);
+            /*
+            * serve menu page and video/image container page
+            */
+            serve_menu(req, res);
         }
-    });
+    }
 
     // Start server
     argv.ip = argv.ip||"0.0.0.0";
     log("Express server is trying to listen on port " + argv.port + " of "+
         ((argv.ip=="0.0.0.0")?"all network interfaces":argv.ip) );
-    http.createServer(app).listen(argv.port, argv.ip, function(){
+    http.createServer(handler).listen(argv.port, argv.ip, function(){
         var rootUrl = "http://localhost:"+ argv.port;
         log_("\nOK. Now you can:\n"+
             "----Watch video/image in browser from menu page "+rootUrl+"\n\n"+

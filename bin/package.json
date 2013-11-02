@@ -1,11 +1,10 @@
 {
   "name": "sji-android-screen-capture",
   "version": "0.0.0",
-  "description": "html5 video capable",
+  "description": "android screen capture for html5 video",
   "main": "stream.js",
   "dependencies": {
-    "commander": "~2.0.0",
-    "express": "~3.4.4"
+    "commander": "~2.0.0"
   },
   "devDependencies": {},
   "scripts": {
