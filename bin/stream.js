@@ -43,7 +43,7 @@ var PNG_TAIL_LEN = 8;
 var isWinOS = process.platform.match(/^win/);
 var isMacOS = process.platform.match(/^darwin/);
 var adbNewLineSeqCrCount = isWinOS ? 2 : isMacOS ? 1 : 0; //will be set again when call __get_remote_version
-var re_adbNewLineSeq = /\r?\r?\n$/;
+var re_adbNewLineSeq = /\r?\r?\n$/; // CR LF or CR CR LF
 var re_toBeEscapedCharForShell = isWinOS ? /["]/g : /["'><&|;(){}`$]/g;
 var re_toBeQuotedCharForShell = isWinOS ? /[><&|%]/g : null;
 var re_whitespace = /\s/g;
@@ -230,7 +230,7 @@ function get_device_desc(sn, on_ok, on_error, timeoutMs) {
     var childProc = spawn_child_process( [argv.adb, "-s", sn, "shell", "echo",
         "`",
         "getprop", "ro.product.model", ";",
-        "getprop", "o.build.version.incremental", ";",
+        "getprop", "ro.build.version.incremental", ";",
         "getprop", "ro.product.manufacturer", ";",
         "getprop", "ro.build.version.release", ";",
         "getprop", "ro.build.version.sdk", ";",
@@ -474,7 +474,6 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
             */
             if (cc.childProc && (cc.type != type || cc.fps < fps || type=="webm"/*todo: delete this condition*/))
                 __cleanup_all(cc, "capture process running with different type or lower fps");
-
 
             if (!cc.childProc) {
                 //replace type, fps of shared context
@@ -872,9 +871,9 @@ function start_stream_server() {
     }
 
     function showReadyMsg() {
-        var rootUrl = "http://localhost:"+ argv.port+"/";;
+        var rootUrl = "http://localhost:"+ argv.port;
         log_("\nOK. Now you can:\n"+
-            "----Watch video/image in browser from menu page "+rootUrl+"\n\n"+
+            "----Watch video/image in browser from menu page "+rootUrl+"/\n\n"+
             "----Embed webm video url into <video> tag of your web page. For example:\n"+
             fs.readFileSync(path.join("html","webm.html")).toString()
                 .replace("/capture?", rootUrl+"/capture?")
