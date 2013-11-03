@@ -8,7 +8,6 @@ This product will do encoding in android by ffmpeg.<br/>
 
 [Screenshot]<br/>
 <img src="screenshot-menu.png" />
-<img src="screenshot-webm.png" />
 <img src="screenshot-png.png" />
 
 [How to use]<br/>
