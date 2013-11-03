@@ -890,8 +890,8 @@ function start_stream_server() {
             "          It should be a floating point number in range ["+MIN_FPS+"-"+MAX_FPS+"].\n"+
             "          For example, 0.5 means 1 frame every 2 seconds.\n"+
             "      Please install latest Android SDK and USB driver of your android.\n"+
-            "      Connect USB cable to android, enable USB debug (only first time),\n"+
-            "      and finally TURN ON screen(otherwise you see black screen), now enjoy it!"+
+            "      Connect USB cable to android and enable USB debug (only first time)\n"+
+            "      or set WiFi debug mode by adb tcp command."+
             "\n"
         );
     }
