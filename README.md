@@ -25,7 +25,7 @@ This product will do encoding in android by ffmpeg.<br/>
 
     to show help: node stream.js --help
 
-4. show webm video/animated png in menu page: http://localhost:3000<br/>
+4. show webm video/animated png in menu page: http://localhost:3000/<br/>
 for webm video, recommend chrome browser.<br/>
 <br/>
     or embed video into your html page:<br/>
@@ -37,10 +37,10 @@ for webm video, recommend chrome browser.<br/>
     &lt;img src="http://localhost:3000/capture?device=yourDeviceSerialNumber&type=png&fps=4" /&gt;<br/>
 
 [Note]<br/>
-    Currently tested in android 4.2, 4.1, 4.0, 2.2, 2.3<br/>
+    Currently tested in android 4.2, 4.1, 4.0, 2.2, 2.3.<br/>
     Host OS can be Windows OS or Mac OS X.<br/>
     src/build_all.sh has been tested in Mac OS X 10.7 64bit and Ubuntu 12 64bit.
-    android NDK r8 or r9. Gcc 4.4.3 or 4.8 
+    Android NDK r8 or r9. Gcc 4.4.3 or 4.8 
 
 [Todo]<br/>
     enhance performance!<br/>
