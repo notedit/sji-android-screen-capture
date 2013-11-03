@@ -7,8 +7,8 @@ This product will do encoding in android by ffmpeg.<br/>
 <a href="http://youtu.be/CWcOjzAJ6Sg">recorded video sample( converted by youtube)</a>
 
 [Screenshot]<br/>
-<img src="screenshot-menu.png" />
-<img src="screenshot-png.png" />
+<img src="doc/screenshot-menu.png" />
+<img src="doc/screenshot-png.png" />
 
 [How to use]<br/>
 
