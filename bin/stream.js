@@ -871,12 +871,8 @@ function start_stream_server() {
         }
     }
 
-    // Start server
-    argv.ip = argv.ip||"0.0.0.0";
-    log("Express server is trying to listen on port " + argv.port + " of "+
-        ((argv.ip=="0.0.0.0")?"all network interfaces":argv.ip) );
-    http.createServer(handler).listen(argv.port, argv.ip, function(){
-        var rootUrl = "http://localhost:"+ argv.port;
+    function showReadyMsg() {
+        var rootUrl = "http://localhost:"+ argv.port+"/";;
         log_("\nOK. Now you can:\n"+
             "----Watch video/image in browser from menu page "+rootUrl+"\n\n"+
             "----Embed webm video url into <video> tag of your web page. For example:\n"+
@@ -898,7 +894,13 @@ function start_stream_server() {
             "      and finally TURN ON screen(otherwise you see black screen), now enjoy it!"+
             "\n"
         );
-    })
+    }
+
+    // Start server
+    argv.ip = argv.ip||"0.0.0.0";
+    log("Express server is trying to listen on port " + argv.port + " of "+
+        ((argv.ip=="0.0.0.0")?"all network interfaces":argv.ip) );
+    http.createServer(handler).listen(argv.port, argv.ip, showReadyMsg)
     .on("error", function(err) {
         log("httpServer!:"+err);
         delayAbort("httpServer error");
