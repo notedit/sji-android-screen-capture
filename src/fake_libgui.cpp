@@ -43,43 +43,43 @@ public:
 };
 
 ScreenshotClient::ScreenshotClient() {
-	LOG("ScreenshotClient::ScreenshotClient()\n");
+    LOG("ScreenshotClient::ScreenshotClient()\n");
 }
 
 // frees the previous screenshot and capture a new one
 int32_t ScreenshotClient::update() {
-	LOG("ScreenshotClient::update()\n");
-	return 1;
+    LOG("ScreenshotClient::update()\n");
+    return 1;
 }
 // frees the previous screenshot and capture a new one
 int32_t ScreenshotClient::update(const sp<IBinder>& display) {
-	LOG("ScreenshotClient::update(const sp<IBinder>& display)\n");
-	return 1;
+    LOG("ScreenshotClient::update(const sp<IBinder>& display)\n");
+    return 1;
 }
 
 // pixels are valid until this object is freed or
 // release() or update() is called
 void const* ScreenshotClient::getPixels() const {
-	LOG("ScreenshotClient::getPixels()\n");
-	return NULL;
+    LOG("ScreenshotClient::getPixels()\n");
+    return NULL;
 }
 
 uint32_t ScreenshotClient::getWidth() const {
-	LOG("ScreenshotClient::getWidth()\n");
-	return 0;
+    LOG("ScreenshotClient::getWidth()\n");
+    return 0;
 }
 uint32_t ScreenshotClient::getHeight() const {
-	LOG("ScreenshotClient::getHeight()\n");
-	return 0;
+    LOG("ScreenshotClient::getHeight()\n");
+    return 0;
 }
 int32_t ScreenshotClient::getFormat() const {
-	LOG("ScreenshotClient::getFormat()\n");
-	return 0;
+    LOG("ScreenshotClient::getFormat()\n");
+    return 0;
 }
 // size of allocated memory in bytes
 size_t ScreenshotClient::getSize() const {
-	LOG("ScreenshotClient::getSize()\n");
-	return 0;
+    LOG("ScreenshotClient::getSize()\n");
+    return 0;
 }
 
 class SurfaceComposerClient
@@ -91,10 +91,10 @@ public:
 };
 
 sp<IBinder> SurfaceComposerClient::getBuiltInDisplay(int32_t id) {
-	LOG("SurfaceComposerClient::getBuiltInDisplay(int32_t id)\n");
-	sp<IBinder> p;
-	p.m_ptr = NULL;
-	return p;
+    LOG("SurfaceComposerClient::getBuiltInDisplay(int32_t id)\n");
+    sp<IBinder> p;
+    p.m_ptr = NULL;
+    return p;
 }
 
 }

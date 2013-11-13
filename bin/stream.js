@@ -489,7 +489,7 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
         theConsumer.res = res;
         theConsumer.cc = cc;
         theConsumer.id = ++cc.lastConsumerId;
-        theConsumer.on_error = __cleanup.bind(null, theConsumer); //bound first argument=theConsumer
+        theConsumer.on_error = __cleanup.bind(null, theConsumer); //prebind first argument=theConsumer
         cc.consumerMap[theConsumer.id] = theConsumer;
         log("["+sn+"]"+"consumer " + theConsumer.id + " is added");
 
@@ -854,14 +854,14 @@ function start_stream_server() {
     function handler(req, res) {
         if (req.method!="GET") return;
         log("process request: " + req.url);
-        if (/^\/capture¥?/.test(req.url)) { //url: /capture
+        if (/^\/capture\?/.test(req.url)) { //url: /capture
             preprocessReq(req);
             /*
             * serve webm video or png image
             */
             capture(req.query.device, res, req.query.type, req.query.fps);
         }
-        else if (/^\/¥??/.test(req.url)) { // url: /
+        else if (/^\/\??/.test(req.url)) { // url: /
             preprocessReq(req);
             /*
             * serve menu page and video/image container page
@@ -896,9 +896,7 @@ function start_stream_server() {
     }
 
     // Start server
-    argv.ip = argv.ip||"0.0.0.0";
-    log("Express server is trying to listen on port " + argv.port + " of "+
-        ((argv.ip=="0.0.0.0")?"all network interfaces":argv.ip) );
+    log("server is trying to listen on port " + argv.port + " of "+((argv.ip=="0.0.0.0")?"all network interfaces":argv.ip) );
     http.createServer(handler).listen(argv.port, argv.ip, showReadyMsg)
     .on("error", function(err) {
         log("httpServer!:"+err);
