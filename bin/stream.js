@@ -7,6 +7,7 @@ var fs = require('fs');
 var path = require('path');
 var url = require('url');
 var querystring = require('querystring');
+log('============================================================================');
 
 //************************command line  **************************************************
 var MIN_FPS=1;
