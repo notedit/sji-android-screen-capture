@@ -12,8 +12,8 @@ var querystring = require("querystring");
 var MIN_FPS=1;
 var MAX_FPS=25;
 var argv = (function() {
-    function _parseInt(s) { var i = parseInt(s,0); if (i==s) return i; else { log("invalid int: '"+s+"'"); process.exit(1); }}
-    function _check_fps(s) { var i = check_fps(s,MIN_FPS,MAX_FPS,NaN); if (!isNaN(i)) return i; else { log("invalid frames_per_second: '"+s+"'"); process.exit(1); }}
+    function _parseInt(s) { var i = parseInt(s,0); if (i==s) return i; else { log("invalid int: \""+s+"\""); process.exit(1); }}
+    function _check_fps(s) { var i = check_fps(s,MIN_FPS,MAX_FPS,NaN); if (!isNaN(i)) return i; else { log("invalid frames_per_second: \""+s+'\""); process.exit(1); }}
     var __def;
     return commander
         .option("--adb <path>", "adb(Android Debug Bridge) utility path. Default is "+(__def="adb"), __def)
@@ -44,7 +44,7 @@ var isWinOS = process.platform.match(/^win/);
 var isMacOS = process.platform.match(/^darwin/);
 var adbNewLineSeqCrCount = isWinOS ? 2 : isMacOS ? 1 : 0; //will be set again when call __get_remote_version
 var re_adbNewLineSeq = /\r?\r?\n$/; // CR LF or CR CR LF
-var re_toBeEscapedCharForShell = isWinOS ? /["]/g : /["'><&|;(){}`$]/g;
+var re_toBeEscapedCharForShell = isWinOS ? /[\"]/g : /[\"'><&|;(){}`$]/g;
 var re_toBeQuotedCharForShell = isWinOS ? /[><&|%]/g : null;
 var re_whitespace = /\s/g;
 
@@ -95,10 +95,10 @@ function delayAbort(err) {
 }
 
 function __escapeChar(c) {
-    return "\\"+c;
+    return '\\'+c;
 }
 function __quoteChar(c) {
-    return "\""+c+"\"";
+    return '\"'+c+'\"';
 }
 
 function spawn_child_process(args, on_error) {
@@ -115,10 +115,10 @@ function spawn_child_process(args, on_error) {
     args.forEach(function(arg) {
         arg = String(arg).replace(re_toBeEscapedCharForShell, __escapeChar);
 		if (re_toBeQuotedCharForShell) arg = arg.replace(re_toBeQuotedCharForShell, __quoteChar);
-        if (arg.indexOf('"')>=0)
+        if (arg.indexOf('\"')>=0)
             arg = arg.replace(re_whitespace, __escapeChar);
         else if (re_whitespace.test(arg))
-            arg = '"' + arg + '"';
+            arg = '\"' + arg + '\"';
         cmdline += " " + arg;
     });
     log("spwan child process:\n"+cmdline);
@@ -142,7 +142,7 @@ function spawn_child_process(args, on_error) {
 }
 
 function htmlEncode(text) {
-    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');
 }
 
 //****************************************************************************************
@@ -823,9 +823,9 @@ function serve_menu(req,res) {
 
                         if (!desc.haveErr) {
                             if (!req.query.type || req.query.type=="webm")
-                                res.write('<a href="/?type=webm&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">WEBM video</a>');
+                                res.write('<a href=\"/?type=webm&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'\">WEBM video</a>');
                             if (!req.query.type || req.query.type=="png")
-                                res.write('<br/><a href="/?type=png&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'">PNG image</a>');
+                                res.write('<br/><a href=\"/?type=png&device='+querystring.escape(sn)+'&fps='+querystring.escape(fps)+'\">PNG image</a>');
                         }
 
                         res.write("</td></tr>");
