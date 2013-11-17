@@ -71,7 +71,7 @@ function log(msg) {
     else
         log.__dtNow = new Date();
     var x = log.__dtNow;
-    process.stderr.write(("00"+x.getMonth()).slice(-2) + "/" + ("00"+x.getDay()).slice(-2) + " " + ("00"+x.getHours()).slice(-2) + ":" + ("00"+x.getMinutes()).slice(-2) + ":" + ("00"+x.getSeconds()).slice(-2) + "." + ("000"+x.getMilliseconds()).slice(-3)+" ");
+    process.stderr.write(("00"+x.getMonth()).slice(-2) + "/" + ("00"+x.getDate()).slice(-2) + " " + ("00"+x.getHours()).slice(-2) + ":" + ("00"+x.getMinutes()).slice(-2) + ":" + ("00"+x.getSeconds()).slice(-2) + "." + ("000"+x.getMilliseconds()).slice(-3)+" ");
     log_(msg);
     process.stderr.write("\n");
     log._lineNotEnded = false;
@@ -185,10 +185,10 @@ function get_all_device_serial_number(on_ok, on_error, onlyFirst) {
     log("get_all_device_serial_number "+(onlyFirst?"(onlyFirst)":""));
     var childProc = spawn_child_process( [argv.adb, "devices"], on_error );
 
-    var result = "";
+    var bufAry = [];
     childProc.stdout.on("data", function(buf) {
         log_(buf);
-        result += buf;
+        bufAry.push(buf);
     });
 
     childProc.stderr.on("data", log_);
@@ -196,6 +196,7 @@ function get_all_device_serial_number(on_ok, on_error, onlyFirst) {
     childProc.on("exit", function(ret) {
         if (ret===0) {
             var snList = [];
+            var result = Buffer.concat(bufAry).toString();
             result.split("\n").slice(1/*from second line*/, onlyFirst ? 1/*only one line*/ : undefined/*all lines*/)
             .forEach( function(lineStr) {
                 var parts = lineStr.split("\t");
@@ -238,10 +239,10 @@ function get_device_desc(sn, on_ok, on_error, timeoutMs) {
         "`"
         ], on_error );
 
-    var desc = "";
+    var bufAry = [];
     childProc.stdout.on("data", function(buf) {
         log_(buf);
-        desc += buf;
+        bufAry.push(buf);
     });
 
     childProc.stderr.on("data", log_);
@@ -260,6 +261,7 @@ function get_device_desc(sn, on_ok, on_error, timeoutMs) {
             clearTimeout(timer);
 
         if (ret===0) {
+            var desc = Buffer.concat(bufAry).toString();
             desc = desc.replace(re_adbNewLineSeq, "");
             if (devMgr[sn])
                 devMgr[sn].desc = {desc: desc, haveErr: false};
@@ -348,10 +350,10 @@ function upload_file(sn, on_ok, on_error) {
         log("__get_remote_version");
         var childProc = spawn_child_process( [argv.adb, "-s", sn, "shell", "echo", "`", "cat", argv.rdir+"/version", "`"], on_error );
 
-        var remote_version = "";
+        var bufAry = [];
         childProc.stdout.on("data", function(buf) {
             log_(buf);
-            remote_version += buf;
+            bufAry.push(buf);
         });
 
         childProc.stderr.on("data", function(buf) {
@@ -362,6 +364,7 @@ function upload_file(sn, on_ok, on_error) {
 
         childProc.on("exit", function(ret) {
             if (__get_remote_version.err) return;
+            var remote_version = Buffer.concat(bufAry).toString();
             remote_version = remote_version.replace(re_adbNewLineSeq, __delete_adbNewLineSeq_and_remember);
             if (remote_version==local_version) {
                 log("same as local version");
@@ -442,7 +445,7 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
         log("capture sn:["+sn+"] type:["+type+"] fps:["+fps+"]");
 
         if (!sn)
-            return __endOutputStreamWithInfo(res, "no [sn] argument", true/*show log*/);
+            return __endOutputStreamWithInfo(res, "no [sn] argument", {showLog:true});
 
         /*
         * ensure init device context and shared capture context of the device
@@ -463,7 +466,7 @@ function capture( sn, res, type, fps /*from here is internal arguments*/, theCon
             cc = devMgr[sn].sharedCaptureContext;
         }
         else
-            return __endOutputStreamWithInfo(res, "wrong [type] argument", true/*show log*/);
+            return __endOutputStreamWithInfo(res, "wrong [type] argument", {showLog:true});
 
         if (fps!=oldFps)
             log("["+sn+"]"+"use fps: "+fps);
@@ -604,23 +607,16 @@ function __cleanup(consumer, reason) {
     }
 }
 
-function __endOutputStreamWithInfo(res, reason, showLog) {
+function __endOutputStreamWithInfo(res, reason, opt) {
     if (reason) {
-        if (showLog)
-            log(showLog);
-
-        try {
-            res.writeHead(200, {"Content-Type": "text/html"});
-            res.write(reason);
-        }
-        catch(e) {
-        }
+        if (opt && opt.showLog) log(reason);
+        try {res.write(reason);} catch(e) {}
     }
 
-    //close output stream
-    try {
-        res.end();  //OK, seems not trigger close event of the stream. BUT may cause error event of res. Such as stdout.end() canse error event
-    } catch(e) {}
+    //OK, seems not trigger close event of the stream. 
+    //BUT may cause error event of res. Such as stdout.end() canse error event
+    try {res.end();} catch(e) {}
+    try {res.close();} catch(e) {}
 }
 
 /*
