@@ -37,6 +37,9 @@ for webm video, recommend chrome browser.<br/>
     or embed animated png into your html page:<br/>
     &lt;img src="http://localhost:3000/capture?device=yourDeviceSerialNumber&type=png&fps=4" /&gt;<br/>
 
+    or to show static png:<br/>
+    &lt;img src="http://localhost:3000/capture?device=yourDeviceSerialNumber&type=png&fps=0" /&gt;<br/>
+
 [Note]<br/>
     Currently tested in android 4.2, 4.1, 4.0, 2.2, 2.3.<br/>
     Host OS can be Windows OS or Mac OS X.<br/>
