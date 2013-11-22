@@ -328,7 +328,15 @@ function get_all_device_desc(on_ok, on_error, sn/*filter*/) {
 
 function __delete_adbNewLineSeq_and_remember(adbNewLineSeq) {
   adbNewLineSeqCrCount = adbNewLineSeq.length-1;
-  log('adbNewLineSeqCrCount:'+adbNewLineSeqCrCount);
+  log('current adbNewLineSeqCrCount:'+adbNewLineSeqCrCount);
+  /*
+  2013-11-22: by calling "stty -onlcr" to disable LF conversion of android pseudo tty,
+              Mac OS X do not need this conversion now.
+              But Windows OS still be CRLF due to Windows's side prepend CR.
+              At a result, adbNewLineSeqCrCount detected here will subtract 1 CR
+  */
+  adbNewLineSeqCrCount = Math.max(0, adbNewLineSeqCrCount-1);
+  log("but with stty -onlcr to disable CR prepending, adbNewLineSeqCrCount will be: " + adbNewLineSeqCrCount);
   return '';
 }
 
@@ -337,13 +345,15 @@ function __delete_adbNewLineSeq_and_remember(adbNewLineSeq) {
 */
 function upload_file(sn, on_ok, on_error) {
 
-  var local_version = fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','ffmpeg.armv7')).mtime.valueOf().toString(36) + '.' +
-            fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','ffmpeg.armv5')).mtime.valueOf().toString(36) + '.' +
-            fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','get-raw-image-4.1.2')).mtime.valueOf().toString(36) + '.' +
-            fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','get-raw-image-4')).mtime.valueOf().toString(36) + '.' +
-            fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','get-raw-image-old')).mtime.valueOf().toString(36) + '.' +
-            fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh')).mtime.valueOf().toString(36) + '.' +
-            fs.statSync(__filename).mtime.valueOf().toString(36);
+  var local_version =
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','ffmpeg.armv7')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','ffmpeg.armv5')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','get-raw-image-4.1.2')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','get-raw-image-4')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','get-raw-image-old')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh_','busybox')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(path.join(UPLOAD_LOCAL_DIR,'run.sh')).mtime.valueOf().toString(36) + '.' +
+    fs.statSync(__filename).mtime.valueOf().toString(36);
 
   __get_remote_version();
 
@@ -614,7 +624,7 @@ function __endOutputStreamWithInfo(res, reason, opt) {
     try {res.write(reason);} catch(e) {}
   }
 
-  //OK, seems not trigger close event of the stream. 
+  //OK, seems not trigger close event of the stream.
   //BUT may cause error event of res. Such as stdout.end() canse error event
   try {res.end();} catch(e) {}
   try {res.close();} catch(e) {}
@@ -739,7 +749,7 @@ function __convertAdbNewLineSeqToLF(cc, buf) {
   for (var i=startPos; i < buf.length; i++) {
     if (buf[i]==CR) {
       crCount++;
-      
+
       /*
       *if no more data to match adbNewLineSeq, then save it as orphan CR which will
       *be processed by next call of this function
@@ -749,7 +759,7 @@ function __convertAdbNewLineSeqToLF(cc, buf) {
         //commit data in range from last start positon to current position-orphanCrCount
         if (startPos < buf.length-cc.orphanCrCount)
           bufAry.push(buf.slice(startPos, buf.length-cc.orphanCrCount));
-          
+
         return bufAry;
       }
     }
@@ -763,7 +773,7 @@ function __convertAdbNewLineSeqToLF(cc, buf) {
         bufAry.push(buf.slice(startPos, i-adbNewLineSeqCrCount));
         startPos = i;
       }
-      
+
       crCount = 0;
     }
   }
@@ -847,7 +857,7 @@ function serve_menu(req,res) {
 
 function start_stream_server() {
   log('start_stream_server');
-  
+
   function handler(req, res) {
     if (req.method!='GET') return;
     log('process request: ' + req.url);

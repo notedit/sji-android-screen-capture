@@ -13,8 +13,11 @@ FEED_FPS="$1"; shift || { log "expect arg1: frames_per_second of raw image"; exi
 FFMPEG_FPS="$1"; shift || { log "exepect arg2: frames_per_second for ffmpeg input"; exit 1; }
 FFMPEG_OUTPUT="$@"; shift || { log "exepect arg3-...: ffmpeg output"; exit 1; }
 
-#set file as executable
-chmod 755 * | exit 1
+log "set all file as executable"
+chmod 755 * || exit 1
+
+log "call stty -onlcr to disable LF -> CRLF conversion of android pseudo tty"
+./busybox stty -onlcr >&2 || exit 1
 
 log "test get-raw-image version"
 
