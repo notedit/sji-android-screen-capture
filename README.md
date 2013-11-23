@@ -42,7 +42,7 @@ for webm video, recommend chrome browser.<br/>
 
 [Note]<br/>
     Currently tested in android 4.2, 4.1, 4.0, 2.2, 2.3.<br/>
-    Host OS can be Windows OS or Mac OS X.<br/>
+    Host OS can be Windows/Mac/Linux (Unix should also be OK, but not tested).<br/>
     src/build_all.sh has been tested in Mac OS X 10.7 64bit and Ubuntu 12 64bit.
     Android NDK r8 or r9. Gcc 4.4.3 or 4.8 
 
