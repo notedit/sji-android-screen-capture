@@ -26,8 +26,8 @@ to show command line help:
 <pre><code>node stream.js --help
 </code></pre>
   
-4.<b>Show video/image of android from PC by browsing http://localhost:3000/</b>  
-For video, currently only support web video, so recommend Google Chrome Browser.  
+4.<b>Show video/image of android from PC by browsing <a href="http://localhost:3000/">http://localhost:3000/</a></b>  
+For video, currently only support web video, so recommend <a href="http://www.google.com/chrome">Google Chrome Browser</a>.  
 For image, currently support animated PNG by multi-part http response. Most browser are supported.  
   
 To embed webm video into your html page:  
