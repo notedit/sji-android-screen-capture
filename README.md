@@ -13,20 +13,20 @@ This product will do encoding in android by ffmpeg.<br/>
 
 [How to use]<br/>
 
-1. setup environment<br/>
-    install android SDK (at least need adb(Linux/Unix) or adb.exe (Windows)).<br/>
+1.<b>setup environment</b><br/>
+    install android SDK (at least "Platform Tools" which include adb).<br/>
     install android USB driver automatically or manually.<br/>
     install node.js manually (<a href="http://nodejs.org/download/">download</a>).<br/>
     $> cd path_of_this_project/bin<br/>
 
-3. start stream server<br/>
+3.<b>start stream server</b><br/>
     connect your android smart phone to PC/Mac by usb cable or set WiFi debug mode by adb tcp command.<br/>
     $> cd path_of_this_project/bin<br/>
     $> node stream.js<br/>
 
     to show help: node stream.js --help
 
-4. show webm video/animated png in menu page: http://localhost:3000/<br/>
+4.<b>show webm video/animated png in menu page: http://localhost:3000/</b><br/>
 for webm video, recommend chrome browser.<br/>
 <br/>
     or embed video into your html page:<br/>
