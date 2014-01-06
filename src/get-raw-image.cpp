@@ -19,7 +19,7 @@
 
 #define FRAME_BUFFER_DEV "/dev/graphics/fb0"
 
-#define LOG(...) fprintf(stderr, __VA_ARGS__)
+#define LOG(fmt, arg...) fprintf(stderr, "[get-raw-image]" fmt "\n", ##arg)
 
 void error(const char *msg, ...) {
     va_list vl;
@@ -99,6 +99,7 @@ using android::SurfaceComposerClient;
 #endif
 
 int main(int argc, char** argv) {
+    LOG("start");
 	int64_t interval_mms = -1;
 	bool isGetFormat = false;
 
@@ -109,7 +110,7 @@ int main(int argc, char** argv) {
 		}
 		else {
 			interval_mms = ((double)1000000)/fps;
-			LOG("****use fps=%.3lf (interval=%.3lfms)\n", fps, (double)interval_mms/1000);
+			LOG("use fps=%.3lf (interval=%.3lfms)", fps, (double)interval_mms/1000);
 		}
 	} else {
 		isGetFormat = true;
@@ -119,19 +120,19 @@ int main(int argc, char** argv) {
 	char* mapbase = NULL;
 
 #if defined(TARGET_JB) || defined(TARGET_ICS)
-	LOG("call ScreenshotClient init\n");
+	LOG("call ScreenshotClient init");
     ScreenshotClient screenshot;
 #endif
 
 #if defined(TARGET_JB)
-	LOG("call SurfaceComposerClient::getBuiltInDisplay\n");
+	LOG("call SurfaceComposerClient::getBuiltInDisplay");
     sp<IBinder> display = SurfaceComposerClient::getBuiltInDisplay(0 /*1 is hdmi*/);
     if (display.m_ptr==NULL)
-		LOG("error getBuiltInDisplay\n");
+		LOG("error getBuiltInDisplay");
 #endif
 
 	int errcount = 0;
-	//LOG(isGetFormat ? "capture once\n" : "start capture\n");
+	//LOG(isGetFormat ? "capture once" : "start capture");
 	int64_t count_start_mms = microSecondOfNow();
 	int64_t until_mms = count_start_mms + interval_mms;
 	
@@ -146,16 +147,16 @@ int main(int argc, char** argv) {
 
 #if defined(TARGET_JB)
 		if (display.m_ptr != NULL) {
-			if (count==1) LOG("call ScreenshotClient.update(display)\n");
+			if (count==1) LOG("call ScreenshotClient.update(display)");
 			surfaceOK = (screenshot.update(display) == 0);
 		}
 #endif
 #if defined(TARGET_ICS)
-		if (count==1) LOG("call ScreenshotClient.update()\n");
+		if (count==1) LOG("call ScreenshotClient.update()");
 		surfaceOK = (screenshot.update() == 0);
 #endif
 #if defined(TARGET_JB) || defined(TARGET_ICS)
-		if (!surfaceOK) if (++errcount<10||errcount%100==0) LOG("error ScreenshotClient.update. So use fb0\n");
+		if (!surfaceOK) if (++errcount<10||errcount%100==0) LOG("error ScreenshotClient.update. So use fb0");
 		if (surfaceOK) {
 			rawImageData = (char*)screenshot.getPixels();
 			rawImageSize = screenshot.getSize();
@@ -170,7 +171,8 @@ int main(int argc, char** argv) {
 					(bytesPerPixel==2) ? "rgb565le" :
 					(bytesPerPixel==5) ? "rgb48le" :
 					(bytesPerPixel==6) ? "rgba64le" :
-					(LOG("strange bytesPerPixel:%d\n", bytesPerPixel),"unknown"));
+					(LOG("strange bytesPerPixel:%d", bytesPerPixel),"unknown"));
+				LOG("end");
 				return 0;
 			}
     	} else
@@ -202,7 +204,8 @@ int main(int argc, char** argv) {
 					(vinfo.bits_per_pixel==48&&vinfo.red.offset!=0) ? "bgr48le" :
 					(vinfo.bits_per_pixel==64&&vinfo.red.offset==0) ? "rgba64le" :
 					(vinfo.bits_per_pixel==64&&vinfo.red.offset!=0) ? "bgra64le" :
-					(LOG("strange bits_per_pixel:%d\n", vinfo.bits_per_pixel),"unknown"));
+					(LOG("strange bits_per_pixel:%d", vinfo.bits_per_pixel),"unknown"));
+				LOG("end");
 				return 0;
 			}
 			else {
@@ -231,6 +234,9 @@ int main(int argc, char** argv) {
 			LOG("stop get raw image due to fps argument is 0");
 			exit(0);
 		}
+		else {
+			if (count==1) LOG("continue capturing......");
+		}
 
 		int64_t now_mms = microSecondOfNow();
 		int64_t diff_mms = until_mms - now_mms;
@@ -243,8 +249,8 @@ int main(int argc, char** argv) {
 		//show statistics at every about 10 seconds
 		diff_mms = now_mms-count_start_mms;
 		if (diff_mms >= 10*1000000) {
-			//LOG("count: %d now-count_start_ms: %lld\n", count, diff_mms);
-			LOG("raw fps: %.2lf   \n", ((double)count) / (((double)diff_mms)/1000000));
+			//LOG("count: %d now-count_start_ms: %lld", count, diff_mms);
+			LOG("raw fps: %.2lf   ", ((double)count) / (((double)diff_mms)/1000000));
 			count_start_mms = now_mms;
 			count = 0;
 		}

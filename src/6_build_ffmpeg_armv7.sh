@@ -20,6 +20,7 @@ echo ""; echo ok; echo ""
 
 echo ---------------patch some files--------------------
 cp -fv $OLD_DIR/patch_ffmpeg_file.c ./libavformat/file.c || exit 1
+cp -fv $OLD_DIR/patch_ffmpeg_cmdutils.c ./cmdutils.c || exit 1
 echo ""; echo ok; echo ""
 
 echo ---------------config ffmpeg [armv7]--------------------
@@ -40,6 +41,7 @@ export CPPFLAGS="--sysroot=$SYS_ROOT"   #ubuntu NDK need this flag when check as
 	--enable-libvpx \
 	--enable-muxer=webm --enable-encoder=libvpx* \
 	--enable-filter=scale \
+	--enable-filter=transpose \
 	\
 	--enable-muxer=image2 \
 	--enable-encoder=png \
@@ -53,6 +55,6 @@ make clean
 make all || exit 1
 make install || exit 1
 
-cp -fv ./qj_armv7/bin/ffmpeg $OLD_DIR/../bin/android/run.sh_/ffmpeg.armv7 || exit 1
+cp -fv ./qj_armv7/bin/ffmpeg $OLD_DIR/../bin/android/ffmpeg.armv7 || exit 1
 
 echo ""; echo ok; echo ""

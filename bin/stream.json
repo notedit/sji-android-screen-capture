@@ -1,0 +1,65 @@
+//NOTE: this file support //comment from LINE HEAD.
+
+{
+  //path of Android Debug Bridge utility. If it is already in PATH list, you can just set file name, otherwise full path
+  "adb": "adb",
+
+  //stream server public port (must < 65536)
+  "port": 33333,
+
+  //stream server public address. Empty string or "*" means listen all network interfaces
+  "ip": "localhost",
+
+  //certificate file means use https (TLSv2), otherwise means http.
+  "ssl": {
+    //true means use https (TLSv2), otherwise means http.
+    "on": false,
+
+    //when ssl.on is true, this setting indicate path of the PKCS12 file which contains server private key and certification.
+    //Currently there a test file there, please replace it with yours.
+    "certificateFilePath": "./ssl/stream_server.pfx"
+  },
+
+  //by admin web server, you can set access key of device, so stream server can check querystring "accessKey"
+  "adminWeb": {
+    //dir where to store result of screen capture (<deviceSerialNumber>....webm or <deviceSerialNumber>....mpng)
+    "outputDir": "./output",
+
+    //************access key of admin web server************************
+    "adminKey": "",
+
+    //admin server public port (must < 65536)
+    "port": 3000,
+
+    //admin server public address. Empty string or "*" means listen all network interfaces
+    "ip": "localhost",
+
+    //certificate file means use https (TLSv2), otherwise means http.
+    "ssl": {
+      //true means use https (TLSv2), otherwise means http.
+      "on": false,
+
+      //when ssl.on is true, this setting indicate path of the PKCS12 file which contains server private key and certification.
+      //Currently there a test file there, please replace it with yours.
+      "certificateFilePath": "./ssl/admin_server.pfx"
+    }
+  },
+
+  //accept request from XmlHttpRequest of Browser
+  "supportXmlHttpRequest": true,
+
+  "android": {
+    "ffmpeg": {
+      //output statistics to log
+      "logStatistics": false
+    }
+  },
+
+  "log": {
+    //Deleting this option or set to null or empty string both means log to stderr(usually means console)
+    "filePath": "./log/log.txt",
+
+    //only valid if filePath is not empty. Should be >= 1
+    "backupDays": 7
+  }
+}
