@@ -44,8 +44,9 @@ To show static png:
 [Note]  
     Currently tested in android 4.2, 4.1, 4.0, 2.2, 2.3.  
     Host OS can be Windows/Mac/Linux (Unix should also be OK, but not tested).  
-    src/build_all.sh has been tested in Mac OS X 10.7 64bit and Ubuntu 12 64bit.  
-    Android NDK r8 or r9. Gcc 4.4.3 or 4.8  
+    Build: src/build_all.sh has been tested in Mac OS X 10.7 64bit and Ubuntu 12 64bit,
+    Android NDK r8 or r9. Gcc 4.4.3 or 4.8.  
+    bin/android/run.sh_/busybox is download from <a href="http://www.busybox.net/downloads/binaries/latest/busybox-armv5l">busybox binary downloads</a>.  
   
 [Todo]  
     enhance performance!  
