@@ -27,7 +27,7 @@ You can edit configuration file stream.json to change IP, port, SSL...
 4.<b>Show video/image of android from PC by browsing <a href="http://localhost:3000/">http://localhost:3000/</a></b>  
 For video, currently only support <a href="http://www.webmproject.org/">WebM</a> video, so recommend <a href="http://www.google.com/chrome">Google Chrome Browser</a>.  
 For image, currently support animated PNG by <a href="http://en.wikipedia.org/wiki/MIME#Mixed-Replace">multi-part http response</a>. Chrome and Firefox and IE10+ are well supported.  
-  
+<br/><br/>
 To embed Animated PNG image into your html page:  
 <pre><code>&lt;img src="http://localhost:33333/capture?device=yourDeviceSerialNumber&type=apng&fps=4" /&gt;
 </code></pre>
