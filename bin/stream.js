@@ -1351,7 +1351,7 @@ function start_admin_server() {
                       var accessKey = devMgr[device] ? devMgr[device].accessKey : '';
                       return joinedStr + htmlRow
                           .replace(/#devinfo\b/g, htmlEncode(infoList[i] || 'Unknown'))
-                          .replace(/#devinfo_class\b/g, htmlEncode(infoList[i] ? 'infoWithTip' : 'errorWithTip'))
+                          .replace(/#devinfo_class\b/g, htmlEncode(infoList[i] ? '' : 'errorWithTip'))
                           .replace(/#device\b/g, htmlEncode(device))
                           .replace(/@device\b/g, querystring.escape(device))
                           .replace(/#accessKey\b/g, htmlEncode(accessKey || ''))

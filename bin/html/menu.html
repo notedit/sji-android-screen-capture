@@ -3,8 +3,8 @@
   <meta charset="UTF-8"/>
   <title>SJI-ASC Management</title>
   <style>
-    ul {padding: 0; margin: 1px;}
-    ol {padding: 0; margin: 1px;}
+    ul {padding: 0; margin: 2px;}
+    ol {padding: 0; margin: 2px;}
     li {list-style-position: inside}
     p {margin: 0}
     table {width: 100%; border-collapse: collapse}
@@ -122,6 +122,27 @@
       </tr>
     </table>
   </form>
+  <ul>Parameter Adjustment for links and buttons
+    <li>
+      <form action="/" style="display: inline">
+        <input type="hidden" name="adminKey" value="#adminKey"/>
+        <button type="submit">Use</button>
+        <label title="frames per second. @MIN_FPS >= value <= @MAX_FPS">
+          <span class="infoWithTip">Fps(Rate)</span>:
+          <input type="text" name="fps" size="2" value="#fps"/>,
+        </label>
+        <label title="e.g: 0.5 or 800x400 or 800x or x400">
+          <span class="infoWithTip">Scale</span>:
+          <input type="text" name="scale" size="10" value="#scale"/>,
+        </label>
+        <label>Rotate:
+          <label><input type="radio" name="rotate" value=""/>0°</label>
+          <label><input type="radio" name="rotate" value="90"/>90°</label>
+          <label><input type="radio" name="rotate" value="270"/>-90°</label>
+        </label>
+      </form>
+    </li>
+  </ul>
   <ul>Server Management
     <li>!!! --->
       <span style="float: right">
@@ -152,27 +173,6 @@
       <a href="/var?adminKey=@adminKey&reloadDevInfo=true"><button>Enable</button></a>
       <a href="/var?adminKey=@adminKey&reloadDevInfo=false"><button>Disable</button></a>
       Reload Device Information Forcibly On Show Menu
-    </li>
-  </ul>
-  <ul>Parameter Adjustment
-    <li>
-      <form action="/" style="display: inline">
-        <input type="hidden" name="adminKey" value="#adminKey"/>
-        <button type="submit">Apply Parameters</button>
-        <label title="frames per second. @MIN_FPS >= value <= @MAX_FPS">
-          <span class="infoWithTip">Fps(Rate)</span>:
-          <input type="text" name="fps" size="2" value="#fps"/>,
-        </label>
-        <label title="e.g: 0.5 or 800x400 or 800x or x400">
-          <span class="infoWithTip">Scale</span>:
-          <input type="text" name="scale" size="10" value="#scale"/>,
-        </label>
-        <label>Rotate:
-          <label><input type="radio" name="rotate" value=""/>0°</label>
-          <label><input type="radio" name="rotate" value="90"/>90°</label>
-          <label><input type="radio" name="rotate" value="270"/>-90°</label>
-        </label>
-      </form>
     </li>
   </ul>
   <hr/>
