@@ -1052,7 +1052,7 @@ function setDefaultHttpHeader(res) {
   }
 }
 
-function start_stream_server() {
+function startStreamWeb() {
   var httpServer, httpSeq = 0, _isAnyIp = isAnyIp(conf.ip), smark = (conf.ssl.on ? 's' : '');
   if (conf.ssl.on) {
     log('load SSL server certificate and private key from PKCS12 file: ' + conf.ssl.certificateFilePath);
@@ -1187,7 +1187,7 @@ function start_stream_server() {
   }
 }
 
-function start_admin_server() {
+function startAdminWeb() {
   var httpServer, httpSeq = 0, _isAnyIp = isAnyIp(conf.adminWeb.ip), smark = (conf.adminWeb.ssl.on ? 's' : '');
   if (conf.adminWeb.ssl.on) {
     log('load SSL server certificate and private key from PKCS12 file: ' + conf.adminWeb.ssl.certificateFilePath);
@@ -1262,8 +1262,12 @@ function start_admin_server() {
             }
             (Array.isArray(deviceAryOr1) ? uniqueNonEmptyArray(deviceAryOr1) : [deviceAryOr1]).forEach(
                 function (device) {
-                  q.device = device;
-                  startRecording(q);
+                  var _q = {};
+                  Object.keys(q).forEach(function (k) {
+                    _q[k] = q[k];
+                  });
+                  _q.device = device;
+                  startRecording(_q);
                 });
             end(res, 'OK');
             break;
@@ -1443,8 +1447,8 @@ function loadResourceSync() {
 
 checkAdb(
     function/*on_ok*/() {
-      start_admin_server();
-      start_stream_server();
+      startAdminWeb();
+      startStreamWeb();
       loadResourceSync();
     });
 
