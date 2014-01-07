@@ -428,7 +428,7 @@ function capture(outputStream, q) {
         useExistingCapture = true;
       }
     } else {
-      //Continuous PNG image stream can be broadcast to multiple client if fps is same
+      //Animated PNG image stream can be broadcast to multiple client if fps is same
       provider = dev.liveStreamer;
       useExistingCapture = true;
     }
@@ -526,7 +526,7 @@ function capture(outputStream, q) {
   }
 }
 
-function startRecording(q, on_complete) {
+function startRecording(q, on_prepared) {
   var filename = stringifyCaptureParameter(q, 'filename');
 
   var wfile = fs.createWriteStream(conf.adminWeb.outputDir + '/' + filename);
@@ -536,16 +536,16 @@ function startRecording(q, on_complete) {
   wfile.on('open', function () {
     log(wfile.logHead + 'open file for write OK');
     capture(wfile, q); //capture to file
-    if (on_complete) {
-      on_complete('', wfile);
-      on_complete = null;
+    if (on_prepared) {
+      on_prepared('', wfile);
+      on_prepared = null;
     }
   });
   wfile.on('error', function (err) {
     log(wfile.logHead + beautifyErrMsg(err));
-    if (on_complete) {
-      on_complete('file operation error');
-      on_complete = null;
+    if (on_prepared) {
+      on_prepared('file operation error');
+      on_prepared = null;
     }
   });
   //do not worry, on close has been handled by capture()
@@ -616,7 +616,9 @@ function playRecordedFile_apng(httpOutputStream, device, fps) {
 
           function __on_complete1Png(pos/*next png start position*/) {
             if (pos < buf.length || rfile.myRestSize > 0) { //if have rest data
-              write(res, APNG_BOUNDARY + '\r\n' + 'Content-Type: image/png\r\n\r\n'); //write next content-type cause Chrome draw previous image immediately
+              //write next content-type to force Chrome draw previous image immediately.
+              //For last image, do not write boundary and next content-type because it will cause last image view destroyed.
+              write(res, APNG_BOUNDARY + '\r\n' + 'Content-Type: image/png\r\n\r\n');
 
               rfile.frameIndex++;
               rfile.pause();
@@ -703,7 +705,7 @@ function downloadRecordedFile(httpOutputStream, device, type) {
     var filename = filenameAry[0];
     res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of download: ' + filename + ']';
 
-    res.setHeader('Content-Type', type === 'webm' ? 'video/webm' : 'image/apng');
+    res.setHeader('Content-Type', 'video/' + type);
     res.setHeader('Content-Disposition', 'attachment;filename=asc~' + filename + '.' + type);
 
     var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
@@ -746,7 +748,6 @@ function downloadRecordedFile(httpOutputStream, device, type) {
 }
 
 function deleteRecordedFile(device) {
-  stopRecording(device);
   findRecordedFile(device, null/*any type*/, function /*on_complete*/(err, filenameAry) {
     if (filenameAry) {
       filenameAry.forEach(function (filename) {
@@ -1092,7 +1093,7 @@ function start_stream_server() {
 
     var parsedUrl = url.parse(req.url, true/*querystring*/), q = parsedUrl.query;
     if (!process) { //impossible condition. Just prevent jsLint/jsHint warning of 'undefined member ... variable of ...'
-      q = {device: '', accessKey: '', type: '', fps: 0, scale: 0, rotate: 0, recordOption: '', by: ''};
+      q = {device: '', accessKey: '', type: '', fps: 0, scale: 0, rotate: 0, recordOption: ''};
     }
     if (chkerrPublicAccess(q)) {
       return end(res, chkerr);
@@ -1105,7 +1106,7 @@ function start_stream_server() {
         }
         if (q.recordOption) { //need record
           startRecording(q,
-              function/*on_complete*/(err, wfile) {
+              function/*on_prepared*/(err, wfile) {
                 if (err) {
                   end(res, err);
                 } else {
@@ -1169,7 +1170,7 @@ function start_stream_server() {
           if (!filenameAry || !filenameAry.length) {
             return end(res, err ? 'file operation error' : 'file not found');
           }
-          return end(res, htmlCache[q.type + '.html']
+          return end(res, htmlCache[q.type + '.html'] //this html will in turn open URL /playRecordedFile?....
               .replace(/#device\b/g, htmlEncode(q.device))
               .replace(/@by\b/g, 'playRecordedFile')
               .replace(/@q\b/g, stringifyCaptureParameter(q, 'querystring'))
