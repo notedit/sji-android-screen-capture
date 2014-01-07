@@ -12,6 +12,8 @@ FEED_FPS="$1"; shift || { log "require arg1: frames_per_second of raw image"; ex
 FFMPEG_FPS="$1"; shift || { log "require arg2: frames_per_second for ffmpeg input"; exit 1; }
 FFMPEG_OUTPUT="$@"; shift || { log "require arg3-...: ffmpeg output"; exit 1; }
 
+chmod 755 * >&2 || exit 1
+
 ./busybox stty -onlcr >&2 || exit 1
 
 { GET_RAW_IMG_EXEC_FILE="./get-raw-image-4.1.2"; log "test $GET_RAW_IMG_EXEC_FILE"; IMG_FORMAT=`$GET_RAW_IMG_EXEC_FILE`; } || \
