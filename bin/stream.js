@@ -1204,7 +1204,7 @@ function startAdminWeb() {
   log(httpServer.logHead + 'listen on ' + ( _isAnyIp ? '*' : conf.adminWeb.ip) + ':' + conf.adminWeb.port);
   httpServer.listen(conf.adminWeb.port, _isAnyIp ? undefined : conf.adminWeb.ip,
       function/*on_ok*/() {
-        log(httpServer.logHead + 'OK. You can start from http' + smark + '://' + (_isAnyIp ? 'localhost' : conf.adminWeb.ip) + ':' + conf.adminWeb.port + '/?adminKey=' + (conf.adminWeb.adminKey || ''), {stderr: true});
+        log(httpServer.logHead + 'OK. You can start from http' + smark + '://' + (_isAnyIp ? '127.0.0.1' : conf.adminWeb.ip) + ':' + conf.adminWeb.port + '/?adminKey=' + (conf.adminWeb.adminKey || ''), {stderr: true});
       });
 
   function handler(req, res) {
@@ -1331,7 +1331,7 @@ function startAdminWeb() {
                   .replace(/[@#]rotate\b/g, q.rotate)
                   .replace(/[@#]MIN_FPS\b/g, String(MIN_FPS))
                   .replace(/[@#]MAX_FPS\b/g, String(MAX_FPS))
-                  .replace(/@stream_web\b/g, 'http' + (conf.ssl.on ? 's' : '') + '://' + (isAnyIp(conf.ip) ? 'localhost' : conf.ip) + ':' + conf.port)
+                  .replace(/@stream_web\b/g, 'http' + (conf.ssl.on ? 's' : '') + '://' + (isAnyIp(conf.ip) ? '127.0.0.1' : conf.ip) + ':' + conf.port)
                   .replace(new RegExp('name="rotate" value="' + q.rotate + '"', 'g'), '$& checked')
                   .replace(new RegExp('ffmpegStatistics=' + (conf.ffmpegStatistics ? 'true' : 'false') + '"><button', 'g'), '$& disabled')
                   .replace(new RegExp('remoteLogAppend=' + (conf.remoteLogAppend ? 'true' : 'false') + '"><button', 'g'), '$& disabled')
