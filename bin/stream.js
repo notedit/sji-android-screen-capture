@@ -563,9 +563,9 @@ function stopRecording(device) {
   }
 }
 
-function getRecordingFileName(device, type) {
+function getRecordingFileName(device, type/*optional*/) {
   var dev, provider, filename = '';
-  if ((dev = devMgr[device]) && (provider = dev.liveStreamer) && provider.type === type) {
+  if ((dev = devMgr[device]) && (provider = dev.liveStreamer) && (!type || provider.type === type)) {
     Object.keys(provider.consumerMap).some(function (consumerId) {
       return (filename = provider.consumerMap[consumerId].filename) ? true : false;
     });
@@ -757,7 +757,7 @@ function deleteRecordedFile(device) {
   });
 }
 
-function findRecordedFile(device, type, on_complete) {
+function findRecordedFile(device, type/*optional*/, on_complete) {
   fs.readdir(conf.adminWeb.outputDir, function (err, filenameAry) {
     if (err) {
       log('readdir ' + err);
