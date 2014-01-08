@@ -12,7 +12,7 @@
     .note {width: 100%; background-color: lightcyan}
     th {background-color: lightgrey}
     button {font-size: 1em; text-align: left}
-    .errorWithTip {color: red}
+    .errorWithTip {color: red; font-weight: bold}
     .infoWithTip {color: blue}
     .midButton {width: 12em}
     .expandable li {display: none}
@@ -23,7 +23,7 @@
   <form action="/deviceControl" style="width: 100%; xborder: 1px solid blue">
     <input type="hidden" name="adminKey" value="#adminKey"/>
     <ul>Device Management (<b>for following checked devices</b>)
-      <li style="display: #show_ifInSecureMode">
+      <li style="display: #show_ifAdminKey">
         <button type="submit" name="action" value="setAccessKey" class="midButton">Set Access Key</button>
         <label title="Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files">
           <input type="text" name="accessKey" size="36" value=""/>
@@ -50,7 +50,9 @@
         </span>
       </li>
     </ul>
-    <p style="color: red">#dev_enum_err</p>
+    <p class="errorWithTip" title="Please confirm that Android Device is connected to this machine by USB or adb connect ip:port. But anyway, it will list any device serial number from ever recorded files">
+      #dev_enum_err
+    </p>
     <table border="1" id="device_tbl">
       <tr>
         <th><label class="fillParent"><input type="checkbox" id="device_chkAll" checked/></label></th>
@@ -70,9 +72,9 @@
             <span class="infoWithTip">SN</span>:
             #device
           </p>
-          <p class="note" title="Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files" style="display: #show_ifInSecureMode">
+          <p class="note" title="Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files" style="display: #show_ifAdminKey">
             <span class="infoWithTip">Key</span>:
-            <span class="#styleName_IfNoAccessKey">#accessKey_disp</span>
+            <span class="#styleName_AccessKey_disp">#accessKey_disp</span>
           </p>
           <p class="#devinfo_class" title="&quot;Unknown&quot; means timeout or device is offline or not authenticated or invalid serial number">
             #devinfo
@@ -110,7 +112,7 @@
         </td>
       </tr>
       <!--repeatEnd-->
-      <tr style="display: #show_ifInSecureMode">
+      <tr style="display: #show_ifAdminKey">
         <td></td>
         <td align="left" valign="top" colspan="3">
           <label title="SN is the Device Serial Number. You can confirm it by &quot;adb devices&quot; command">
@@ -173,12 +175,61 @@
       <a href="/var?adminKey=@adminKey&reloadDevInfo=false"><button>Disable</button></a>
       Reload Device Information Forcibly On Show Menu
     </li>
+    <li>
+      <a href="/var?adminKey=@adminKey&logAPNGReplayProgress=true"><button>Enable</button></a>
+      <a href="/var?adminKey=@adminKey&logAPNGReplayProgress=false"><button>Disable</button></a>
+      Log Animated PNG replay progress
+    </li>
+    <li>
+      <a href="/var?adminKey=@adminKey&countStreamWriteBytes=true"><button>Enable</button></a>
+      <a href="/var?adminKey=@adminKey&countStreamWriteBytes=false"><button>Disable</button></a>
+      Count HTTP Write Bytes
+    </li>
+    <li>
+      <a href="/var?adminKey=@adminKey&logStreamWrite=true"><button>Enable</button></a>
+      <a href="/var?adminKey=@adminKey&logStreamWrite=false"><button>Disable</button></a>
+      Log HTTP Write
+    </li>
   </ul>
   <hr/>
-  <ol class="expandable" style="display: #hide_ifInSecureMode">
-    <span class="note">Stream web server is NOT in protected mode (Means anyone can freely get to device's capture via this application).
-       <span class="infoWithTip">To enable protected mode...</span>
-    </span>
+  <ol class="expandable" style="display: #show_ifStreamWebLocal">
+    <span class="note infoWithTip">To Enable Remote Access to Stream Web, ...</span>
+    <li>
+      Set ip = "*" or some explicit IP address in stream.json file.
+    </li>
+    <li>
+      Optionally, set ssl.on = true to enable secure communication.
+    </li>
+    <li>
+      Restart this application.
+    </li>
+  </ol>
+  <ol class="expandable" style="display: #hide_ifStreamWebSSLOrLocal">
+    <span class="note infoWithTip" >To Enable SSL on Stream Web, ...</span>
+    <li>
+      Set ssl.on = true in stream.json file.
+    </li>
+    <li>
+      Optionally, configure certificateFilePath or replace PKCS12 file ./ssl/StreamWeb.pfx with yours.
+    </li>
+    <li>
+      Restart this application.
+    </li>
+  </ol>
+  <ol class="expandable" style="display: #hide_ifAdminWebSSLOrLocal">
+    <span class="note infoWithTip" >To Enable SSL on Admin Web, ...</span>
+    <li>
+      Set adminWeb.ssl.on = true in stream.json file.
+    </li>
+    <li>
+      Optionally, configure adminWeb.certificateFilePath or replace PKCS12 file ./ssl/AdminWeb.pfx with yours.
+    </li>
+    <li>
+      Restart this application.
+    </li>
+  </ol>
+  <ol class="expandable" style="display: #hide_ifAdminKeyOrStreamWebLocal">
+    <span class="note infoWithTip">To enable authentication on Stream Web...</span>
     <li>
       Set <b style="color:blue">adminKey</b> in stream.json file to any string you like. e.g. "adminKey": "xxxx"
     </li>
@@ -186,28 +237,14 @@
       Restart this application.
     </li>
     <li>
-      Enter this menu page with adminKey=yourAdminKey querystring appended.
+      Open this menu page by the URL appended with adminKey=yourAdminKey querystring. E.g. https://127.0.0.1/?adminKey=xxxx
     </li>
     <li>
       Use "Set Access Key" to attach access key to selected devices.
       (The Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files)
     </li>
   </ol>
-  <ol class="expandable" style="display: #hide_ifInSSL">
-    <span class="note" >Stream or admin web server is NOT in SSL mode.
-      <span class="infoWithTip">To enable SSL...</span>
-    </span>
-    <li>
-      Set ssl.on and adminWeb.ssl.on = true in stream.json file.
-    </li>
-    <li>
-      Optionally you can configure certificateFilePath in stream.json file or replace PKCS12 file ./ssl/*.pfx.
-    </li>
-    <li>
-      Restart this application.
-    </li>
-  </ol>
-  <p>For more information, please move mouse to <span class="infoWithTip" style="font-size: larger; font-weight: bold">blue</span> keyword text(non-link) and stay a second then you can see tip.</p>
+  <p>For more information, please move mouse to <span class="infoWithTip" style="font-size: larger; font-weight: bold">blue</span> or <span class="errorWithTip" style="font-size: larger; font-weight: bold">red</span> keyword text(non-link) and stay a second then you can see tip.</p>
   <script src="./jquery-2.0.3.js?adminKey=@adminKey" type="text/javascript"></script>
   <script>
     setTimeout(function(){
