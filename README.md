@@ -22,9 +22,9 @@ Install android USB driver automatically or manually when you first plug Android
 <pre><code>cd path_of_this_project/bin  
 node stream.js
 </code></pre>
-You can edit configuration file stream.json to change IP, port, SSL...  
-
-4.<b>Show video/image of android from PC by browsing <a href="http://localhost:3000/">http://localhost:3000/</a></b>  
+You can edit configuration file <a href="bin/stream.json">stream.json</a> to change IP, port, SSL...  
+<br/><br/>
+4.<b>Show video/image of android from PC by browsing <a href="http://localhost:3000/">http://localhost:3000/</a></b>  <br/>
 For video, currently only support <a href="http://www.webmproject.org/">WebM</a> video, so recommend <a href="http://www.google.com/chrome">Google Chrome Browser</a>.  
 For image, currently support animated PNG by <a href="http://en.wikipedia.org/wiki/MIME#Mixed-Replace">multi-part http response</a>. Chrome and Firefox are well supported.  
 <br/><br/>
