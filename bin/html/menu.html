@@ -15,8 +15,8 @@
     .errorWithTip {color: red}
     .infoWithTip {color: blue}
     .midButton {width: 12em}
-    ol li {display: none;}
-    ol:hover li {display: list-item;}
+    .expandable li {display: none}
+    .expandable:hover li {display: list-item; background-color: white}
   </style>
 </head>
 <body onunload="">
@@ -143,16 +143,15 @@
       </form>
     </li>
   </ul>
-  <ul>Server Management
-    <li>!!! --->
-      <span style="float: right">
-        <a href="/stopServer?adminKey=@adminKey"><button style="color: red" class="midButton">Stop Server</button></a>
-        <a href="/restartAdb?adminKey=@adminKey"><button style="color: red" class="midButton">Restart ADB</button></a>
-      </span>
+  <ul class="expandable" style="position: fixed; bottom: 0; right: 0;">
+    <span class="infoWithTip">Advanced Server Management...</span>
+    <li>
+      <a href="/stopServer?adminKey=@adminKey"><button style="color: red" class="midButton">Stop Server</button></a>
+      <a href="/restartAdb?adminKey=@adminKey"><button style="color: red" class="midButton">Restart ADB</button></a>
     </li>
     <li>
-      <a href="/reloadResource?adminKey=@adminKey"><button>Reload/Rescan Resource Files...</button></a>
-      (Reload Html template, JavaScript, Rescan device SN from recorded files...)
+      <a href="/reloadResource?adminKey=@adminKey"><button>Reload/Rescan Resource...</button></a>
+      <span class="infoWithTip" title="Reload Html template, JavaScript, Rescan device SN from recorded files...">?</span>
     </li>
     <li>
       <a href="/var?adminKey=@adminKey&ffmpegStatistics=true"><button>Enable</button></a>
@@ -176,8 +175,10 @@
     </li>
   </ul>
   <hr/>
-  <ol style="display: #hide_ifInSecureMode">
-    <span class="note">Stream web server is NOT in protected mode (Means anyone can freely get to device's capture via this application). To enable protected mode...</span>
+  <ol class="expandable" style="display: #hide_ifInSecureMode">
+    <span class="note">Stream web server is NOT in protected mode (Means anyone can freely get to device's capture via this application).
+       <span class="infoWithTip">To enable protected mode...</span>
+    </span>
     <li>
       Set <b style="color:blue">adminKey</b> in stream.json file to any string you like. e.g. "adminKey": "xxxx"
     </li>
@@ -192,8 +193,10 @@
       (The Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files)
     </li>
   </ol>
-  <ol style="display: #hide_ifInSSL">
-    <span class="note" >Stream or admin web server is NOT in SSL mode. To Enable SSL...</span>
+  <ol class="expandable" style="display: #hide_ifInSSL">
+    <span class="note" >Stream or admin web server is NOT in SSL mode.
+      <span class="infoWithTip">To enable SSL...</span>
+    </span>
     <li>
       Set ssl.on and adminWeb.ssl.on = true in stream.json file.
     </li>
@@ -204,7 +207,7 @@
       Restart this application.
     </li>
   </ol>
-  <p>For more information, please move mouse to <span class="infoWithTip">blue</span> keyword text(non-link) and stay a second then you can see tip.</p>
+  <p>For more information, please move mouse to <span class="infoWithTip" style="font-size: larger; font-weight: bold">blue</span> keyword text(non-link) and stay a second then you can see tip.</p>
   <script src="./jquery-2.0.3.js?adminKey=@adminKey" type="text/javascript"></script>
   <script>
     setTimeout(function(){
