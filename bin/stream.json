@@ -4,15 +4,15 @@
   //path of Android Debug Bridge utility. If it is already in PATH list, you can just set file name, otherwise full path
   "adb": "adb",
 
-  //stream server public port (must < 65536)
+  //Stream Web public port (must < 65536). For port < 1024, your need to have root privilege.
   "port": 33333,
 
-  //stream server public address. Empty string or "*" means listen all network interfaces
+  //Stream Web public IP. Empty string, "*", "0.0.0.0" both means listen all network interfaces
   "ip": "127.0.0.1",
 
-  //certificate file means use https (TLSv2), otherwise means http.
+  //Stream Web SSL
   "ssl": {
-    //true means use https (TLSv2), otherwise means http.
+    //true means use HTTPS (TLSv2), false means HTTP.
     "on": false,
 
     //when ssl.on is true, this setting indicate path of the PKCS12 file which contains server private key and certification.
@@ -20,7 +20,7 @@
     "certificateFilePath": "./ssl/stream_server.pfx"
   },
 
-  //by admin web server, you can set access key of device, so stream server can check querystring "accessKey"
+  //Admin Web. By this web you can set access key of device, so stream web can check querystring "accessKey"
   "adminWeb": {
     //dir where to store result of screen capture (<deviceSerialNumber>....webm or <deviceSerialNumber>....mpng)
     "outputDir": "./output",
@@ -28,15 +28,15 @@
     //************access key of admin web server************************
     "adminKey": "",
 
-    //admin server public port (must < 65536)
+    //Admin Web public port (must < 65536). For port < 1024, your need to have root privilege.
     "port": 3000,
 
-    //admin server public address. Empty string or "*" means listen all network interfaces
+    //Admin Web public IP. Empty string, "*", "0.0.0.0" both means listen all network interfaces
     "ip": "127.0.0.1",
 
-    //certificate file means use https (TLSv2), otherwise means http.
+    //Admin Web SSL
     "ssl": {
-      //true means use https (TLSv2), otherwise means http.
+      //true means use HTTPS (TLSv2), false means HTTP.
       "on": false,
 
       //when ssl.on is true, this setting indicate path of the PKCS12 file which contains server private key and certification.
