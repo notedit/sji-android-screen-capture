@@ -3,15 +3,18 @@
   <meta charset="UTF-8"/>
   <title>#LiveOrStatic webm_#device</title>
   <style>
-    h4, p {margin: 1}
+    h4, p {margin: 1px}
   </style>
 </head>
 <body>
   <h4>#LiveOrStatic Of Android Screen (WebM Video)</h4>
-  <p style="background-color: lightcyan; display: #show_ifLiveView">You can change rate etc. by set querystring fps, scale, rotate</p>
+  <p style="background-color: lightcyan; display: #show_ifLiveView">You can change rate etc. by set URL querystring fps, scale, rotate.
+    E.g. scale=0.5 or scale=800x400 or scale=800x or scale=x400, rotate=90 or rotate=270
+  </p>
   <p>If the video is always <b>black</b>, please turn on screen of your android.</p>
   <p style="background-color: lightcyan">This is just a sample HTML which contain a &lt;video&gt; tag to use <b>ANOTHER</b> URL for real video stream.</p>
-  <p style="background-color: lightcyan">So <span style="color: blue; font-size: larger">DO NOT</span> use this page's URL as your src of &lt;source&gt; of &lt;video&gt; directly. Please use:<p>/@by?@q</p></p>
+  <p style="background-color: lightcyan">So <span style="color: blue; font-size: larger">DO NOT</span> use this page's URL as src of &lt;source&gt; of &lt;video&gt; directly. <b>Please use</b>:</p>
+  <p>/@by?@q</p>
   <video autoplay controls preload="none" autobuffer="0">
     <source src="/@by?@q" type="video/webm">
     Your browser does not support the WebM video format. Please use Google Chrome.
