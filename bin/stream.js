@@ -638,7 +638,7 @@ function playRecordedFile_apng(httpOutputStream, device, fps) {
 
               rfile.frameIndex++;
               rfile.pause();
-              setTimeout(function /*__resume*/() {
+              rfile.apngTimer = setTimeout(function /*__resume*/() {
                 rfile.resume();
                 __writeAPNG(provider, buf, pos, buf.length, on_complete1Png);
               }, (rfile.startTimeMs + rfile.frameIndex * 1000 / fps) - Date.now());
@@ -660,6 +660,7 @@ function playRecordedFile_apng(httpOutputStream, device, fps) {
 
     rfile.on('close', function () {
       log(res.logHead + 'file closed');
+      clearTimeout(rfile.apngTimer);
       unregisterStaticStreamer(device, rfile.streamerId);
     });
 
