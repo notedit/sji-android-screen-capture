@@ -11,7 +11,7 @@ var child_process = require('child_process'),
 
 var conf = jsonFile.parse('./stream.json');
 if (!process) { //impossible condition. Just prevent jsLint/jsHint warning of 'undefined member ... variable of ...'
-  conf = {adb: '', port: 0, ip: '', ssl: {on: false, certificateFilePath: ''}, adminWeb: {outputDir: ''}, supportXmlHttpRequest: false, ffmpegStatistics: false, remoteLogAppend: false, logHttpReqAddr: false, reloadDevInfo: false, logAPNGReplayProgress: false, countStreamWriteBytes: false, logStreamWrite: false};
+  conf = {adb: '', port: 0, ip: '', ssl: {on: false, certificateFilePath: ''}, adminWeb: {outputDir: ''}, supportXmlHttpRequest: false, ffmpegStatistics: false, remoteLogAppend: false, logHttpReqAddr: false, reloadDevInfo: false, logAPNGReplayProgress: false, logStreamWrite: false};
 }
 var log = logger.create(conf ? conf.log : null);
 log('===================================pid:' + process.pid + '=======================================');
@@ -31,7 +31,7 @@ var re_adbNewLineSeq = /\r?\r?\n$/; // CR LF or CR CR LF
 var devMgr = {}; //key:device serial number, value:device info
 var chkerr = '';
 var htmlCache = {};
-var dynamicConfKeyList = ['ffmpegStatistics', 'remoteLogAppend', 'logHttpReqAddr', 'reloadDevInfo', 'logAPNGReplayProgress', 'countStreamWriteBytes', 'logStreamWrite'];
+var dynamicConfKeyList = ['ffmpegStatistics', 'remoteLogAppend', 'logHttpReqAddr', 'reloadDevInfo', 'logAPNGReplayProgress', 'logStreamWrite'];
 
 //************************common *********************************************************
 function spawn(logHead, _path, args, on_close, opt) {
@@ -176,9 +176,6 @@ function write(res, dataStrOfBuf) {
   if (res.setHeader && !res.isAdminWeb) {
     if (conf.logStreamWrite) {
       log(res.logHead + 'output ' + dataStrOfBuf.length + ' bytes');
-    }
-    if (conf.countStreamWriteBytes) {
-      devMgr.httpStreamWriteBytes = (devMgr.httpStreamWriteBytes || 0) + dataStrOfBuf.length;
     }
   }
 
@@ -1358,9 +1355,10 @@ function startAdminWeb() {
                       .replace(/[@#]MAX_FPS\b/g, String(MAX_FPS))
                       .replace(new RegExp('name="rotate" value="' + q.rotate + '"', 'g'), '$& checked')
                       .replace(/#show_ifStreamWebLocal\b/g, conf.ip === 'localhost' || conf.ip === '127.0.0.1' ? '' : 'none')
-                      .replace(/#hide_ifStreamWebSSLOrLocal\b/g, conf.ssl.on || conf.ip === 'localhost' || conf.ip === '127.0.0.1' ? 'none' : '')
-                      .replace(/#hide_ifAdminWebSSLOrLocal\b/g, conf.adminWeb.ssl.on || conf.adminWeb.ip === 'localhost' || conf.adminWeb.ip === '127.0.0.1' ? 'none' : '')
-                      .replace(/#hide_ifAdminKeyOrStreamWebLocal\b/g, conf.adminWeb.adminKey || conf.ip === 'localhost' || conf.ip === '127.0.0.1' ? 'none' : '')
+                      .replace(/#show_ifAdminWebLocal\b/g, conf.adminWeb.ip === 'localhost' || conf.adminWeb.ip === '127.0.0.1' ? '' : 'none')
+                      .replace(/#hide_ifStreamWebSSL\b/g, conf.ssl.on ? 'none' : '')
+                      .replace(/#hide_ifAdminWebSSL\b/g, conf.adminWeb.ssl.on ? 'none' : '')
+                      .replace(/#hide_ifAdminKey\b/g, conf.adminWeb.adminKey ? 'none' : '')
                   ;
 
               dynamicConfKeyList.forEach(function (k) {
