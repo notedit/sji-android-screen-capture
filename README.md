@@ -43,7 +43,7 @@ To just capture one screenshot:
 </code></pre>
 
 [Note]:  
-All above command support can specify scale and rotate optionally. E.g. Append following querystring to above URL:
+All above URLs can specify scale and rotate optionally by append following querystring:
 <pre>
 &scale=0.5&rotate=270 or  
 &scale=300x or  
@@ -51,7 +51,9 @@ All above command support can specify scale and rotate optionally. E.g. Append f
 &scale=x200 ...  
 </pre>  
   
-For advanced usage, please start menu page, move mouse to link and button(in fact it is also link).  
+For advanced usage, please start menu page, move mouse to link and button to see URL.  
+<br/>
+<br/>
 You can attach an access key for device so all above URL must  appended &accessKey=yourAccessKey otherwise you get "access denied" error response.  
 Typically stream web server administrator set adminKey e.g. xxxx,   
 then submit URL request:  
