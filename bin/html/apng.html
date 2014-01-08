@@ -3,20 +3,40 @@
   <meta charset="UTF-8"/>
   <title>#LiveOrStatic apng_#device</title>
   <style>
-    h4, p {margin: 1px}
+    h4, p {margin: 2px}
+    ul {padding: 0; margin: 2px;}
+    ol {padding: 0; margin: 2px;}
+    li {list-style-position: inside}
   </style>
 </head>
 <body>
   <h4>#LiveOrStatic Of Android Screen (Animated PNG)</h4>
-  <p style="background-color: lightcyan; display: #show_ifLiveView">You can change rate etc. by set URL querystring fps, scale, rotate.
-    E.g. scale=0.5 or scale=800x400 or scale=800x or scale=x400, rotate=90 or rotate=270
-  </p>
-  <p style="background-color: lightcyan; display: #show_ifViewRecordedFile">You can change rate by fps querystring in address bar</p>
-  <p>If the video is always <b>black</b>, please turn on screen of your android.</p>
-  <p style="background-color: lightcyan">This is just a sample HTML which contain a &lt;img&gt; tag to use <b>ANOTHER</b> URL for real video stream.</p>
-  <p style="background-color: lightcyan">So <span style="color: blue; font-size: larger">DO NOT</span> use this page's URL as src of &lt;img&gt; directly. <b>Please use</b>:</p>
-  <p>/@by?@q</p>
+  <ul>
+    <li style="display: #show_ifLiveView">
+      You can set querystring <b>fps</b> <b>scale</b> <b>rotate</b> to indicate framesPerSecond, size, rotation.
+      <p>Example: scale=0.5 scale=800x400 scale=800x scale=x400, rotate=90 rotate=270</p>
+    </li>
+    <li style="display: #show_ifViewRecordedFile">
+      You can set querystring <b>fps</b> to indicate framesPerSecond. Example: fps=2
+    </li>
+    <li style="display: #show_ifViewRecordedFile">
+      You can set querystring <b>fileIndex</b> to indicate older file. Example: fileIndex=1
+    </li>
+    <li>
+      If the video is always <b>BLACK</b>, please turn on screen of your android device
+    </li>
+    <li>
+      This is just a sample HTML which contain a &lt;img&gt; tag to use <b>ANOTHER</b> URL for real video stream.
+      <p style="background-color: lightcyan">So <span style="color: blue; font-size: larger">DO NOT</span> use this page's URL as src of &lt;img&gt; directly. <b>Please use</b>:</p>
+      <p>/@by?@q  (optionally can append above querystring)</p>
+    </li>
+  </ul>
   <img src="/@by?@q"/>
-  <p>If you can not see the video, please connect Android Device and Enabled Debug Mode of it(From Developer Setting), otherwise check log please.</p>
+  <p style="display: #show_ifLiveView">
+    If you can not see the video, please connect Android Device and Enabled Debug Mode of it(From Developer Setting), otherwise check log please.
+  </p>
+  <p style="display: #show_ifViewRecordedFile">
+    If you can not see the video, maybe there are some server internal error such as file not found, disk full, check log please.
+  </p>
 </body>
 </html>

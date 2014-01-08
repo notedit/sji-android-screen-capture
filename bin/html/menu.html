@@ -16,7 +16,7 @@
     .infoWithTip {color: blue}
     .midButton {width: 12em}
     .expandable > li {display: none}
-    .expandable:hover > li {display: list-item; background-color: white}
+    .expandable:hover > li {display: list-item}
   </style>
 </head>
 <body onunload="">
@@ -129,11 +129,11 @@
       <form action="/" style="display: inline">
         <input type="hidden" name="adminKey" value="#adminKey"/>
         <button type="submit">Use</button>
-        <label title="frames per second. @MIN_FPS >= value <= @MAX_FPS">
+        <label title="Frames per Second. @MIN_FPS >= value <= @MAX_FPS">
           <span class="infoWithTip">Fps(Rate)</span>:
           <input type="text" name="fps" size="2" value="#fps"/>,
         </label>
-        <label title="e.g: 0.5 or 800x400 or 800x or x400">
+        <label title="Example: 0.5 or 800x400 or 800x or x400">
           <span class="infoWithTip">Scale</span>:
           <input type="text" name="scale" size="10" value="#scale"/>,
         </label>
@@ -151,73 +151,84 @@
     or <span class="errorWithTip" style="font-size: larger; font-weight: bold">red</span>
     keyword text(not link) and stay a second then you can see tip.
   </p>
-  <div style="position: fixed; bottom: 0; left: 0; width: 100%">
-    <ol class="expandable" style="display: #hide_ifAdminKey">
-      <span class="note infoWithTip">To Enable Authentication on Stream Web...</span>
-      <li>
-        Set <b style="color:blue">adminKey</b> in stream.json file to any string you like. e.g. "adminKey": "xxxx"
-      </li>
-      <li>
-        Restart this application.
-      </li>
-      <li>
-        Open this menu page by the URL appended with adminKey=yourAdminKey querystring. E.g. https://127.0.0.1/?adminKey=xxxx
-      </li>
-      <li>
-        Use "Set Access Key" to attach access key to selected devices.
-        (The Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files)
-      </li>
-    </ol>
-    <ol class="expandable" style="display: #show_ifStreamWebLocal">
-      <span class="note infoWithTip">To Enable Remote Access to Stream Web, ...</span>
-      <li>
-        Set ip = "*" or some explicit IP address in stream.json file.
-      </li>
-      <li>
-        Optionally, set ssl.on = true to Enable SSL on Stream Web.
-      </li>
-      <li>
-        Restart this application.
-      </li>
-    </ol>
-    <ol class="expandable" style="display: #hide_ifStreamWebSSL">
-      <span class="note infoWithTip" >To Enable SSL on Stream Web, ...</span>
-      <li>
-        Set ssl.on = true in stream.json file.
-      </li>
-      <li>
-        Optionally, configure certificateFilePath or replace PKCS12 file ./ssl/StreamWeb.pfx with yours.
-      </li>
-      <li>
-        Restart this application.
-      </li>
-    </ol>
-    <ol class="expandable" style="display: #show_ifAdminWebLocal">
-      <span class="note infoWithTip">To Enable Remote Access to Admin Web, ...</span>
-      <li>
-        Set adminWeb.ip = "*" or some explicit IP address in stream.json file.
-      </li>
-      <li>
-        Optionally, set adminWeb.ssl.on = true to Enable SSL on Admin Web.
-      </li>
-      <li>
-        Restart this application.
-      </li>
-    </ol>
-    <ol class="expandable" style="display: #hide_ifAdminWebSSL">
-      <span class="note infoWithTip" >To Enable SSL on Admin Web, ...</span>
-      <li>
-        Set adminWeb.ssl.on = true in stream.json file.
-      </li>
-      <li>
-        Optionally, configure adminWeb.certificateFilePath or replace PKCS12 file ./ssl/AdminWeb.pfx with yours.
-      </li>
-      <li>
-        Restart this application.
-      </li>
-    </ol>
-  </div>
-  <ul class="expandable" style="position: fixed; bottom: 0; right: 0">
+  <ul class="expandable" style="position: fixed; bottom: 0; left: 0; background-color: white; width: 100%">
+    <span class="infoWithTip">How to Enable Authentication, Remote Access, SSL...</span>
+    <li style="display: #hide_ifAdminKey">
+      <ol class="expandable" style="display: inline">
+        <span class="note infoWithTip">To Enable Authentication on Stream Web...</span>
+        <li>
+          Set <b style="color:blue">adminKey</b> in stream.json file to any string you like. Example: "adminKey": "xxxx"
+        </li>
+        <li>
+          Restart this application.
+        </li>
+        <li>
+          Open this menu page by the URL appended with adminKey=yourAdminKey querystring. Example: https://127.0.0.1/?adminKey=xxxx
+        </li>
+        <li>
+          Use "Set Access Key" to attach access key to selected devices.
+          (The Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files)
+        </li>
+      </ol>
+    </li>
+    <li style="display: #show_ifStreamWebLocal">
+      <ol class="expandable" style="display: inline">
+        <span class="note infoWithTip">To Enable Remote Access to Stream Web...</span>
+        <li>
+          Set ip = "*" or some explicit IP address in stream.json file.
+        </li>
+        <li>
+          Optionally, set ssl.on = true to Enable SSL on Stream Web.
+        </li>
+        <li>
+          Restart this application.
+        </li>
+      </ol>
+    </li>
+    <li style="display: #hide_ifStreamWebSSL">
+      <ol class="expandable" style="display: inline">
+        <span class="note infoWithTip" >To Enable SSL on Stream Web...</span>
+        <li>
+          Set ssl.on = true in stream.json file.
+        </li>
+        <li>
+          Optionally, configure certificateFilePath or replace PKCS12 file ./ssl/StreamWeb.pfx with yours.
+        </li>
+        <li>
+          Restart this application.
+        </li>
+      </ol>
+    </li>
+    <li style="display: #show_ifAdminWebLocal">
+      <ol class="expandable" style="display: inline">
+        <span class="note infoWithTip">To Enable Remote Access to Admin Web...</span>
+        <li>
+          Set adminWeb.ip = "*" or some explicit IP address in stream.json file.
+        </li>
+        <li>
+          Optionally, set adminWeb.ssl.on = true to Enable SSL on Admin Web.
+        </li>
+        <li>
+          Restart this application.
+        </li>
+      </ol>
+    </li>
+    <li style="display: #hide_ifAdminWebSSL">
+      <ol class="expandable" style="display: inline">
+        <span class="note infoWithTip" >To Enable SSL on Admin Web...</span>
+        <li>
+          Set adminWeb.ssl.on = true in stream.json file.
+        </li>
+        <li>
+          Optionally, configure adminWeb.certificateFilePath or replace PKCS12 file ./ssl/AdminWeb.pfx with yours.
+        </li>
+        <li>
+          Restart this application.
+        </li>
+      </ol>
+    </li>
+  </ul>
+  <ul class="expandable" style="position: fixed; bottom: 0; right: 0; background-color: white">
     <span class="infoWithTip">Advanced Server Management...</span>
     <li style="margin-bottom: 8px">
       <a href="/stopServer?adminKey=@adminKey"><button style="color: red" class="midButton">Stop Server</button></a>
