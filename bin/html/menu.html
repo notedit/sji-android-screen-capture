@@ -88,10 +88,10 @@
           <p class="note">Recording: #isRecording_apng</p>
           <p class="note">Streaming: #streamingCount_apng</p>
           <ul>
-            <li><a href="@stream_web/viewLiveCapture?device=@device&accessKey=@accessKey&type=apng&fps=@fps&scale=@scale&rotate=@rotate" target="live view #device">Live View</a></li>
+            <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=apng&fps=@fps&scale=@scale&rotate=@rotate" target="live view #device">Live View</a></li>
             <li>
               Recorded File:
-              <a href="@stream_web/viewRecordedFile?device=@device&accessKey=@accessKey&type=apng" target="replay #device">View</a>
+              <a href="@stream_web/sampleHtmlToViewRecordedFile?device=@device&accessKey=@accessKey&type=apng" target="replay #device">View</a>
               <a href="@stream_web/downloadRecordedFile?device=@device&accessKey=@accessKey&type=apng" target="asc download">Download</a>
             </li>
           </ul>
@@ -100,12 +100,12 @@
           <p class="note">Recording: #isRecording_webm</p>
           <p class="note">Streaming: #streamingCount_webm</p>
           <ul>
-            <li><a href="@stream_web/viewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate" target="live view #device">Live View (Stop Recording)</a></li>
-            <li><a href="@stream_web/viewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate&recordOption=sync" target="live view #device">Live View & Record until close view</a></li>
-            <li><a href="@stream_web/viewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate&recordOption=async" target="live view #device">Live View & Record in background</a></li>
+            <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate" target="live view #device">Live View (Stop Recording)</a></li>
+            <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate&recordOption=sync" target="live view #device">Live View & Record until close view</a></li>
+            <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate&recordOption=async" target="live view #device">Live View & Record in background</a></li>
             <li>
               Recorded File:
-              <a href="@stream_web/viewRecordedFile?device=@device&accessKey=@accessKey&type=webm" target="replay #device">View</a>
+              <a href="@stream_web/sampleHtmlToViewRecordedFile?device=@device&accessKey=@accessKey&type=webm" target="replay #device">View</a>
               <a href="@stream_web/downloadRecordedFile?device=@device&accessKey=@accessKey&type=webm" target="asc download">Download</a>
             </li>
           </ul>

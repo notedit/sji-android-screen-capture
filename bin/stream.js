@@ -1171,7 +1171,7 @@ function startStreamWeb() {
         }
         downloadRecordedFile(res, q.device, q.type);
         break;
-      case '/viewLiveCapture':  //------------------------show live capture (Just as a sample) -------------------------
+      case '/sampleHtmlToViewLiveCapture':  //------------------------show live capture (Just as a sample) -------------------------
         if (chkerrCaptureParameter(q)) {
           return end(res, chkerr);
         }
@@ -1191,7 +1191,7 @@ function startStreamWeb() {
             }
         );
         break;
-      case '/viewRecordedFile':  //----------------------show recorded file  (Just as a sample)-------------------------
+      case '/sampleHtmlToViewRecordedFile':  //----------------------show recorded file  (Just as a sample)-------------
         if (chkerrRequired('device', q.device) ||
             chkerrRequired('type', q.type, ['apng', 'webm']) ||
             chkerrOptional('fps', (q.fps = Number(q.fps)), MIN_FPS, MAX_FPS)) {
@@ -1500,12 +1500,12 @@ checkAdb(
 //done: sort recorded file by time
 //done: memory leak test on repeatedly view recorded file and view live capture
 //done: Fixed: Force firefox/safari refresh page when history back
-//done: check device existence for viewLiveCapture request
+//done: check device existence for sampleHtmlToViewLiveCapture request
 //done: stress test live capture (animated PNG)
 //done: stress test live capture (webm)
 //done: test close http stream when downloading or playing
 //done: do not show recording file, only show latest recorded file
-//done: check device availability first in /viewRecordedFile or /viewLiveCapture
+//done: check device availability first in /sampleHtmlToViewRecordedFile or /sampleHtmlToViewLiveCapture
 //done: show streaming counter in menu page
 
 //todo: test: on Windows OS, IE
@@ -1513,7 +1513,7 @@ checkAdb(
 //todo: safari: multipart/x-mixed-replace
 //todo: kill orphan process
 //todo: join two webm file
-//todo: send webm video to browser and file at same time. Completely remove recordOption when viewLiveCapture
+//todo: send webm video to browser and file at same time. Completely remove recordOption when sampleHtmlToViewLiveCapture
 //todo: adapt fps change without interrupting viewer
 //todo: use error image or video to show error
 //todo: water mark
