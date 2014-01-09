@@ -11,7 +11,7 @@ var child_process = require('child_process'),
 
 var conf = jsonFile.parse('./stream.json');
 if (!process) { //impossible condition. Just prevent jsLint/jsHint warning of 'undefined member ... variable of ...'
-  conf = {adb: '', port: 0, ip: '', ssl: {on: false, certificateFilePath: ''}, adminWeb: {}, outputDir: '', maxRecordedFileSize: 0, supportXmlHttpRequest: false, ffmpegStatistics: false, remoteLogAppend: false, logHttpReqAddr: false, reloadDevInfo: false, logAPNGReplayProgress: false, logStreamWrite: false};
+  conf = {adb: '', port: 0, ip: '', ssl: {on: false, certificateFilePath: ''}, adminWeb: {}, outputDir: '', maxRecordedFileSize: 0, supportXmlHttpRequest: false, ffmpegStatistics: false, remoteLogAppend: false, logHttpReqAddr: false, reloadDevInfo: false, logAPNGProgress: false, logStreamWrite: false};
 }
 var log = logger.create(conf ? conf.log : null);
 log('===================================pid:' + process.pid + '=======================================');
@@ -31,7 +31,7 @@ var re_adbNewLineSeq = /\r?\r?\n$/; // CR LF or CR CR LF
 var devMgr = {}; //key:device serial number, value:device info
 var chkerr = '';
 var htmlCache = {};
-var dynamicConfKeyList = ['ffmpegStatistics', 'remoteLogAppend', 'logHttpReqAddr', 'reloadDevInfo', 'logAPNGReplayProgress', 'logStreamWrite'];
+var dynamicConfKeyList = ['ffmpegStatistics', 'remoteLogAppend', 'logHttpReqAddr', 'reloadDevInfo', 'logAPNGProgress', 'logStreamWrite'];
 
 //************************common *********************************************************
 function spawn(logHead, _path, args, on_close, opt) {
@@ -642,7 +642,7 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
           playANPGBuffer(provider, buf, 0, buf.length, on_complete1Png);
 
           function on_complete1Png(pos/*next png start position*/) {
-            if (conf.logAPNGReplayProgress) {
+            if (conf.logAPNGProgress) {
               log(res.logHead + 'apng frame ' + rfile.frameIndex + ' completed');
             }
             if (pos < buf.length || rfile.myRestSize > 0) { //if have rest data
@@ -658,7 +658,7 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
               }, (rfile.startTimeMs + rfile.frameIndex * 1000 / fps) - Date.now());
             }
             else {
-              if (conf.logAPNGReplayProgress) {
+              if (conf.logAPNGProgress) {
                 log(res.logHead + 'apng last frame completed');
               }
             }
@@ -959,13 +959,14 @@ function playANPGBuffer(provider, buf, pos, endPos, on_complete1Png /*optional*/
     if (res.isAPNGStarted) {
       write(res, provider.pngCache.slice(0, provider.pngCacheLength));
 
-      if (conf.logAPNGReplayProgress) {
-        if (res.dbgIndex === undefined) {
-          res.dbgIndex = 0;
+      if (conf.logAPNGProgress) {
+        if (res.pngIndex === undefined) {
+          res.pngIndex = 0;
         }
-        log('dbg ' + res.dbgIndex + ' out ' + provider.pngCacheLength);
-        fs.createWriteStream(conf.outputDir + '/' + 'dbg' + res.dbgIndex + '.png').end(provider.pngCache.slice(0, provider.pngCacheLength));
-        res.dbgIndex++;
+        var filename = (res.filename || 'play_result') + '_' + res.pngIndex + '.png';
+        log('png ' + filename + ' length ' + provider.pngCacheLength);
+        fs.createWriteStream(conf.outputDir + '/' + filename).end(provider.pngCache.slice(0, provider.pngCacheLength));
+        res.pngIndex++;
       }
     }
   }
