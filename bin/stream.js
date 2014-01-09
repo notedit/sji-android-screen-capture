@@ -598,199 +598,187 @@ function getRecordingFileName(device, type/*optional*/) {
 
 function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
   findRecordedFile(device, 'apng', function /*on_complete*/(err, filenameAry) {
-    if (!filenameAry || !filenameAry[fileIndex || 0]) {
-      end(httpOutputStream, err ? 'file operation error' : 'file not found');
-    } else {
-      __playRecordedFile_apng(httpOutputStream, device, filenameAry[fileIndex || 0], fps);
+    var res = httpOutputStream, filename;
+    if (!filenameAry || !(filename = filenameAry[fileIndex || 0])) {
+      return end(res, err ? 'file operation error' : 'file not found');
     }
-  });
-}
+    if (!fps) {
+      fps = Number(filename.slice(querystring.escape(device).length + '~apng~f'.length).match(/^[0-9.]+/));
+    }
+    var provider = {consumerMap: {undefined: res}};
+    res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of [play: ' + filename + ']';
 
-function __playRecordedFile_apng(res, device, filename, fps) {
-  if (!fps) {
-    fps = Number(filename.slice(querystring.escape(device).length + '~apng~f'.length).match(/^[0-9.]+/));
-  }
-  var provider = {consumerMap: {undefined: res}};
-  res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of [play: ' + filename + ']';
+    res.setHeader('Content-Type', MULTIPART_MIXED_REPLACE);
 
-  res.setHeader('Content-Type', MULTIPART_MIXED_REPLACE);
+    var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
 
-  var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
-
-  rfile.on('open', function (fd) {
-    log(res.logHead + 'open file for read OK');
-    fs.fstat(fd, function (err, stats) {
-      if (err) {
-        log('fstat ' + err);
-        rfile.myRestSize = 0x10000000000000000;
-      } else {
-        rfile.myRestSize = stats.size;
-      }
-
-      rfile.streamerId = registerStaticStreamer(device, 'apng');
-
-      rfile.on('data', function (buf) {
-        rfile.myRestSize -= buf.length;
-        if (rfile.myRestSize < 0) { //means file is growing
+    rfile.on('open', function (fd) {
+      log(res.logHead + 'open file for read OK');
+      fs.fstat(fd, function (err, stats) {
+        if (err) {
+          log('fstat ' + err);
           rfile.myRestSize = 0x10000000000000000;
+        } else {
+          rfile.myRestSize = stats.size;
         }
-        if (!rfile.startTimeMs) {
-          rfile.startTimeMs = Date.now();
-          rfile.frameIndex = 0;
-        }
-        __writeAPNG(provider, buf, 0, buf.length, on_complete1Png);
 
-        function on_complete1Png(pos/*next png start position*/) {
-          if (conf.logAPNGReplayProgress) {
-            log(res.logHead + 'apng frame ' + rfile.frameIndex + ' completed');
-          }
-          if (pos < buf.length || rfile.myRestSize > 0) { //if have rest data
-            //write next content-type early to force Chrome draw previous image immediately.
-            //For last image, do not write next content-type head because it cause last image view invalidated.
-            write(res, '\n--' + MULTIPART_BOUNDARY + '\n' + 'Content-Type:image/png\n\n');
+        rfile.streamerId = registerStaticStreamer(device, 'apng');
 
-            rfile.frameIndex++;
-            rfile.pause();
-            rfile.apngTimer = setTimeout(function /*__resume*/() {
-              rfile.resume();
-              __writeAPNG(provider, buf, pos, buf.length, on_complete1Png);
-            }, (rfile.startTimeMs + rfile.frameIndex * 1000 / fps) - Date.now());
+        rfile.on('data', function (buf) {
+          rfile.myRestSize -= buf.length;
+          if (rfile.myRestSize < 0) { //means file is growing
+            rfile.myRestSize = 0x10000000000000000;
           }
-          else {
+          if (!rfile.startTimeMs) {
+            rfile.startTimeMs = Date.now();
+            rfile.frameIndex = 0;
+          }
+          __writeAPNG(provider, buf, 0, buf.length, on_complete1Png);
+
+          function on_complete1Png(pos/*next png start position*/) {
             if (conf.logAPNGReplayProgress) {
-              log(res.logHead + 'apng last frame completed');
+              log(res.logHead + 'apng frame ' + rfile.frameIndex + ' completed');
+            }
+            if (pos < buf.length || rfile.myRestSize > 0) { //if have rest data
+              //write next content-type early to force Chrome draw previous image immediately.
+              //For last image, do not write next content-type head because it cause last image view invalidated.
+              write(res, '\n--' + MULTIPART_BOUNDARY + '\n' + 'Content-Type:image/png\n\n');
+
+              rfile.frameIndex++;
+              rfile.pause();
+              rfile.apngTimer = setTimeout(function /*__resume*/() {
+                rfile.resume();
+                __writeAPNG(provider, buf, pos, buf.length, on_complete1Png);
+              }, (rfile.startTimeMs + rfile.frameIndex * 1000 / fps) - Date.now());
+            }
+            else {
+              if (conf.logAPNGReplayProgress) {
+                log(res.logHead + 'apng last frame completed');
+              }
             }
           }
-        }
-      });
+        });
 
-      rfile.on('end', function () {
-        log(res.logHead + 'file end');
-        end(res);
+        rfile.on('end', function () {
+          log(res.logHead + 'file end');
+          end(res);
+        });
       });
     });
-  });
 
-  rfile.on('close', function () {
-    log(res.logHead + 'file closed');
-    clearTimeout(rfile.apngTimer);
-    unregisterStaticStreamer(device, rfile.streamerId);
-  });
+    rfile.on('close', function () {
+      log(res.logHead + 'file closed');
+      clearTimeout(rfile.apngTimer);
+      unregisterStaticStreamer(device, rfile.streamerId);
+    });
 
-  rfile.on('error', function (err) {
-    log(res.logHead + beautifyErrMsg(err));
-    end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
-  });
+    rfile.on('error', function (err) {
+      log(res.logHead + beautifyErrMsg(err));
+      end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
+    });
 
-  //stop if http connection is closed by peer
-  res.on('close', function () {
-    rfile.close();
+    //stop if http connection is closed by peer
+    res.on('close', function () {
+      rfile.close();
+    });
+    return null; //just for avoiding compiler warning
   });
-  return null; //just for avoiding compiler warning
 }
 
 function playRecordedFile_simple(httpOutputStream, device, fileIndex, type) {
   findRecordedFile(device, type, function /*on_complete*/(err, filenameAry) {
-    if (!filenameAry || !filenameAry[fileIndex || 0]) {
-      end(httpOutputStream, err ? 'file operation error' : 'file not found');
-    } else {
-      __playRecordedFile_simple(httpOutputStream, device, filenameAry[fileIndex || 0], type);
+    var res = httpOutputStream, filename;
+    if (!filenameAry || !(filename = filenameAry[fileIndex || 0])) {
+      return end(res, err ? 'file operation error' : 'file not found');
     }
+    res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of play: ' + filename + ']';
+
+    res.setHeader('Content-Type', 'video/' + type);
+
+    var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
+
+    rfile.on('open', function (/*fd*/) {
+      log(res.logHead + 'open file for read OK');
+      rfile.streamerId = registerStaticStreamer(device, type);
+    });
+
+    rfile.on('close', function () {
+      log(res.logHead + 'file closed');
+      unregisterStaticStreamer(device, rfile.streamerId);
+    });
+
+    rfile.on('data', function (buf) {
+      write(res, buf);
+    });
+
+    rfile.on('end', function () {
+      log(res.logHead + 'file end');
+      end(res);
+    });
+
+    rfile.on('error', function (err) {
+      log(res.logHead + beautifyErrMsg(err));
+      end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
+    });
+
+    //stop if http connection is closed by peer
+    res.on('close', function () {
+      rfile.close();
+    });
+    return null; //just for avoiding compiler warning}
   });
-}
-
-function __playRecordedFile_simple(res, device, filename, type) {
-  res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of play: ' + filename + ']';
-
-  res.setHeader('Content-Type', 'video/' + type);
-
-  var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
-
-  rfile.on('open', function (/*fd*/) {
-    log(res.logHead + 'open file for read OK');
-    rfile.streamerId = registerStaticStreamer(device, type);
-  });
-
-  rfile.on('close', function () {
-    log(res.logHead + 'file closed');
-    unregisterStaticStreamer(device, rfile.streamerId);
-  });
-
-  rfile.on('data', function (buf) {
-    write(res, buf);
-  });
-
-  rfile.on('end', function () {
-    log(res.logHead + 'file end');
-    end(res);
-  });
-
-  rfile.on('error', function (err) {
-    log(res.logHead + beautifyErrMsg(err));
-    end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
-  });
-
-  //stop if http connection is closed by peer
-  res.on('close', function () {
-    rfile.close();
-  });
-  return null; //just for avoiding compiler warning}
 }
 
 function downloadRecordedFile(httpOutputStream, device, fileIndex, type) {
   findRecordedFile(device, type, function /*on_complete*/(err, filenameAry) {
-    if (!filenameAry || !filenameAry[fileIndex || 0]) {
-      end(httpOutputStream, err ? 'file operation error' : 'file not found');
-    } else {
-      __downloadRecordedFile(httpOutputStream, device, filenameAry[fileIndex || 0], type);
+    var res = httpOutputStream, filename;
+    if (!filenameAry || !(filename = filenameAry[fileIndex || 0])) {
+      return end(res, err ? 'file operation error' : 'file not found');
     }
-  });
-}
+    res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of download: ' + filename + ']';
 
-function __downloadRecordedFile(res, device, filename, type) {
-  res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of download: ' + filename + ']';
+    res.setHeader('Content-Type', 'video/' + type);
+    res.setHeader('Content-Disposition', 'attachment;filename=asc~' + filename + '.' + type);
 
-  res.setHeader('Content-Type', 'video/' + type);
-  res.setHeader('Content-Disposition', 'attachment;filename=asc~' + filename + '.' + type);
+    var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
 
-  var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
+    rfile.on('open', function (fd) {
+      log(res.logHead + 'open file for read OK');
+      fs.fstat(fd, function (err, stats) {
+        if (err) {
+          log('fstat ' + err);
+        } else {
+          res.setHeader('Content-Length', stats.size);
+        }
+        rfile.streamerId = registerStaticStreamer(device, type);
 
-  rfile.on('open', function (fd) {
-    log(res.logHead + 'open file for read OK');
-    fs.fstat(fd, function (err, stats) {
-      if (err) {
-        log('fstat ' + err);
-      } else {
-        res.setHeader('Content-Length', stats.size);
-      }
-      rfile.streamerId = registerStaticStreamer(device, type);
+        rfile.on('data', function (buf) {
+          write(res, buf);
+        });
 
-      rfile.on('data', function (buf) {
-        write(res, buf);
-      });
-
-      rfile.on('end', function () {
-        log(res.logHead + 'file end');
-        end(res);
+        rfile.on('end', function () {
+          log(res.logHead + 'file end');
+          end(res);
+        });
       });
     });
-  });
 
-  rfile.on('close', function () {
-    log(res.logHead + 'file closed');
-    unregisterStaticStreamer(device, rfile.streamerId);
-  });
+    rfile.on('close', function () {
+      log(res.logHead + 'file closed');
+      unregisterStaticStreamer(device, rfile.streamerId);
+    });
 
-  rfile.on('error', function (err) {
-    log(res.logHead + beautifyErrMsg(err));
-    end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
-  });
+    rfile.on('error', function (err) {
+      log(res.logHead + beautifyErrMsg(err));
+      end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
+    });
 
-  //stop if http connection is closed by peer
-  res.on('close', function () {
-    rfile.close();
+    //stop if http connection is closed by peer
+    res.on('close', function () {
+      rfile.close();
+    });
+    return null; //just for avoiding compiler warning
   });
-  return null; //just for avoiding compiler warning
 }
 
 function deleteRecordedFile(device) {
