@@ -1337,7 +1337,7 @@ function startAdminWeb() {
         spawn('[getInternalLog]', conf.adb, ['-s', q.device, 'shell', 'cat', ANDROID_WORK_DIR + '/log'],
             function  /*on_close*/(ret, stdout, stderr) {
               res.setHeader('Content-Type', 'text/plain');
-              end(res, stdout || stderr);
+              end(res, stdout || (stderr ? stderr.replace(/^error: */i, '') : 'unknown error'));
             }, {noLogStdout: true});
         break;
       case '/': //---------------------------------------show menu of all devices---------------------------------------
