@@ -901,9 +901,6 @@ function __writeAPNG(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
   if (pos >= endPos) {
     return;
   }
-  /*
-   * find head
-   */
   if (!provider.pngCacheLength) {
     //mark each consumer's start flag
     Object.keys(provider.consumerMap).forEach(__startPNG);
@@ -914,8 +911,10 @@ function __writeAPNG(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
     }
   }
 
+  buf.copy(provider.pngCache, provider.pngCacheLength, pos, Math.min(endPos, pos + APNG_CACHE_LEN - provider.pngCacheLength));
+
   for (; pos < endPos; pos++) {
-    provider.pngCache[provider.pngCacheLength++] = buf[pos];
+    provider.pngCacheLength++;
     /*
      * find tail
      */
