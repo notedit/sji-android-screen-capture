@@ -4,7 +4,6 @@
   <title>SJI-ASC Management</title>
   <style>
     ul {padding: 0; margin: 2px;}
-    ol {padding: 0; margin: 2px;}
     li {list-style-position: inside}
     p {margin: 0}
     table {width: 100%; border-collapse: collapse}
@@ -151,11 +150,11 @@
     or <span class="errorWithTip" style="font-size: larger; font-weight: bold">red</span>
     keyword text(not link) and stay a second then you can see tip.
   </p>
-  <ul class="expandable" style="position: fixed; bottom: 0; left: 0; background-color: white; width: 100%">
+  <ul class="expandable" style="position: fixed; bottom: 0; left: 0; background-color: white">
     <span class="infoWithTip">How to Enable Authentication, Remote Access, SSL...</span>
     <li style="display: #hide_ifAdminKey">
-      <ol class="expandable" style="display: inline">
-        <span class="note infoWithTip">To Enable Authentication on Stream Web...</span>
+      <span class="note infoWithTip">To Enable Authentication on Stream Web...</span>
+      <ul>
         <li>
           Set <b style="color:blue">adminKey</b> in stream.json file to any string you like. Example: "adminKey": "xxxx"
         </li>
@@ -169,11 +168,11 @@
           Use "Set Access Key" to attach access key to selected devices.
           (The Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files)
         </li>
-      </ol>
+      </ul>
     </li>
     <li style="display: #show_ifStreamWebLocal">
-      <ol class="expandable" style="display: inline">
-        <span class="note infoWithTip">To Enable Remote Access to Stream Web...</span>
+      <span class="note infoWithTip">To Enable Remote Access to Stream Web...</span>
+      <ul>
         <li>
           Set ip = "*" or some explicit IP address in stream.json file.
         </li>
@@ -183,11 +182,11 @@
         <li>
           Restart this application.
         </li>
-      </ol>
+      </ul>
     </li>
     <li style="display: #hide_ifStreamWebSSL">
-      <ol class="expandable" style="display: inline">
-        <span class="note infoWithTip" >To Enable SSL on Stream Web...</span>
+      <span class="note infoWithTip" >To Enable SSL on Stream Web...</span>
+      <ul>
         <li>
           Set ssl.on = true in stream.json file.
         </li>
@@ -197,11 +196,11 @@
         <li>
           Restart this application.
         </li>
-      </ol>
+      </ul>
     </li>
     <li style="display: #show_ifAdminWebLocal">
-      <ol class="expandable" style="display: inline">
-        <span class="note infoWithTip">To Enable Remote Access to Admin Web...</span>
+      <span class="note infoWithTip">To Enable Remote Access to Admin Web...</span>
+      <ul>
         <li>
           Set adminWeb.ip = "*" or some explicit IP address in stream.json file.
         </li>
@@ -211,11 +210,11 @@
         <li>
           Restart this application.
         </li>
-      </ol>
+      </ul>
     </li>
     <li style="display: #hide_ifAdminWebSSL">
-      <ol class="expandable" style="display: inline">
-        <span class="note infoWithTip" >To Enable SSL on Admin Web...</span>
+      <span class="note infoWithTip" >To Enable SSL on Admin Web...</span>
+      <ul>
         <li>
           Set adminWeb.ssl.on = true in stream.json file.
         </li>
@@ -225,7 +224,7 @@
         <li>
           Restart this application.
         </li>
-      </ol>
+      </ul>
     </li>
   </ul>
   <ul class="expandable" style="position: fixed; bottom: 0; right: 0; background-color: white">
