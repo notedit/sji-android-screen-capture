@@ -7,11 +7,63 @@
     ul {padding: 0; margin: 2px;}
     ol {padding: 0; margin: 2px;}
     li {list-style-position: inside}
+    img {
+      user-select: none;
+      -webkit-user-select: none;
+      -ms-user-select: none;
+    }
+    .rotate90 {
+      transform:rotate(90deg);
+      -webkit-transform:rotate(90deg);
+      -ms-transform:rotate(90deg);
+    }
+    .rotate270 {
+      transform:rotate(270deg);
+      -webkit-transform:rotate(270deg);
+      -ms-transform:rotate(270deg);
+    }
+    .scale50 {
+      transform:scale(0.5, 0.5);
+      -webkit-transform:scale(0.5, 0.5);
+      -ms-transform:scale(0.5, 0.5);
+    }
+    .scale25 {
+      transform:scale(0.25, 0.25);
+      -webkit-transform:scale(0.25, 0.25);
+      -ms-transform:scale(0.25, 0.25);
+    }
   </style>
+  <script>
+    function rotateLocally(el) {
+      var j, clsAry = el.className.split(/ +/);
+      if ((j=clsAry.indexOf('rotate90'))>=0) {
+        clsAry[j] = 'rotate270';
+      } else if ((j=clsAry.indexOf('rotate270'))>=0) {
+        clsAry[j] = '';
+      } else {
+        clsAry.push('rotate90');
+      }
+      el.className = clsAry.join(' ');
+    }
+    function scaleLocally(el) {
+      var j, clsAry = el.className.split(/ +/);
+      if ((j=clsAry.indexOf('scale50'))>=0) {
+        clsAry[j] = 'scale25';
+      } else if ((j=clsAry.indexOf('scale25'))>=0) {
+        clsAry[j] = '';
+      } else {
+        clsAry.push('scale50');
+      }
+      el.className = clsAry.join(' ');
+    }
+  </script>
 </head>
 <body>
   <h4>#LiveOrStatic Of Android Screen (WebM Video)</h4>
   <ul>
+    <li style="background-color: lightcyan">
+      You can click video to rotate locally. Double click to scale locally.
+    </li>
     <li style="display: #show_ifLiveView">
       You can set querystring <b>fps</b> <b>scale</b> <b>rotate</b> to indicate framesPerSecond, size, rotation.
       <p>Example: scale=0.5 scale=800x400 scale=800x scale=x400, rotate=90 rotate=270</p>
@@ -28,10 +80,12 @@
       <p>/@by?@q  (optionally can append above querystring)</p>
     </li>
   </ul>
-  <video autoplay controls preload="none" autobuffer="0">
-    <source src="/@by?@q" type="video/webm">
-    Your browser does not support the WebM video format. Please use Google Chrome.
-  </video>
+  <div style="text-align: center; width: 100%;">
+    <video autoplay controls preload="none" autobuffer="0" onclick="rotateLocally(this)" ondblclick="scaleLocally(this)" title="Click to rotate. Double click to scale">
+      <source src="/@by?@q" type="video/webm">
+      Your browser does not support the WebM video format. Please use Google Chrome.
+    </video>
+  </div>
   <p style="display: #show_ifLiveView">
     If you can not see the video, please connect Android Device and Enabled Debug Mode of it(From Developer Setting), otherwise check log please.
   </p>
