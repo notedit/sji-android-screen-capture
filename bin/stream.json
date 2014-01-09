@@ -22,9 +22,6 @@
 
   //Admin Web. By this web you can set access key of device, so stream web can check querystring "accessKey"
   "adminWeb": {
-    //dir where to store result of screen capture (<deviceSerialNumber>....webm or <deviceSerialNumber>....mpng)
-    "outputDir": "./output",
-
     //************access key of admin web server************************
     "adminKey": "",
 
@@ -44,6 +41,12 @@
       "certificateFilePath": "./ssl/admin_server.pfx"
     }
   },
+
+  //recorded files dir
+  "outputDir": "./output",
+
+  //max recorded file size
+  "maxRecordedFileSize": 1024000000,
 
   //accept request from XmlHttpRequest of Browser
   "supportXmlHttpRequest": true,

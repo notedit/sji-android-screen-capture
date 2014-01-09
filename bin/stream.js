@@ -11,7 +11,7 @@ var child_process = require('child_process'),
 
 var conf = jsonFile.parse('./stream.json');
 if (!process) { //impossible condition. Just prevent jsLint/jsHint warning of 'undefined member ... variable of ...'
-  conf = {adb: '', port: 0, ip: '', ssl: {on: false, certificateFilePath: ''}, adminWeb: {outputDir: ''}, supportXmlHttpRequest: false, ffmpegStatistics: false, remoteLogAppend: false, logHttpReqAddr: false, reloadDevInfo: false, logAPNGReplayProgress: false, logStreamWrite: false};
+  conf = {adb: '', port: 0, ip: '', ssl: {on: false, certificateFilePath: ''}, adminWeb: {}, outputDir: '', maxRecordedFileSize: 0, supportXmlHttpRequest: false, ffmpegStatistics: false, remoteLogAppend: false, logHttpReqAddr: false, reloadDevInfo: false, logAPNGReplayProgress: false, logStreamWrite: false};
 }
 var log = logger.create(conf ? conf.log : null);
 log('===================================pid:' + process.pid + '=======================================');
@@ -173,13 +173,19 @@ function write(res, dataStrOfBuf) {
     log((res.logHead || '') + 'start output......');
   }
 
-  if (res.setHeader && !res.isAdminWeb) {
-    if (conf.logStreamWrite) {
-      log(res.logHead + 'output ' + dataStrOfBuf.length + ' bytes');
-    }
+  if (conf.logStreamWrite && !res.isAdminWeb) {
+    log(res.logHead + 'output ' + dataStrOfBuf.length + ' bytes');
   }
 
   res.write(dataStrOfBuf);
+
+  if (res.filename) { //FileRecorder
+    res.fileSize = (res.fileSize || 0) + dataStrOfBuf.length;
+    if (res.fileSize >= conf.maxRecordedFileSize) {
+      log(res.logHead + 'stop recording due to size too big');
+      end(res);
+    }
+  }
 }
 
 function end(res, dataStrOfBuf) {
@@ -540,7 +546,7 @@ function startRecording(q, on_prepared) {
       function /*on_ok*/() {
         var filename = stringifyCaptureParameter(q, 'filename');
 
-        var wfile = fs.createWriteStream(conf.adminWeb.outputDir + '/' + filename);
+        var wfile = fs.createWriteStream(conf.outputDir + '/' + filename);
         wfile.logHead = '[record: ' + filename + ']';
         wfile.filename = filename;
 
@@ -610,7 +616,7 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
 
     res.setHeader('Content-Type', MULTIPART_MIXED_REPLACE);
 
-    var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
+    var rfile = fs.createReadStream(conf.outputDir + '/' + filename);
 
     rfile.on('open', function (fd) {
       log(res.logHead + 'open file for read OK');
@@ -695,7 +701,7 @@ function playRecordedFile_simple(httpOutputStream, device, fileIndex, type) {
 
     res.setHeader('Content-Type', 'video/' + type);
 
-    var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
+    var rfile = fs.createReadStream(conf.outputDir + '/' + filename);
 
     rfile.on('open', function (/*fd*/) {
       log(res.logHead + 'open file for read OK');
@@ -740,7 +746,7 @@ function downloadRecordedFile(httpOutputStream, device, fileIndex, type) {
     res.setHeader('Content-Type', 'video/' + type);
     res.setHeader('Content-Disposition', 'attachment;filename=asc~' + filename + '.' + type);
 
-    var rfile = fs.createReadStream(conf.adminWeb.outputDir + '/' + filename);
+    var rfile = fs.createReadStream(conf.outputDir + '/' + filename);
 
     rfile.on('open', function (fd) {
       log(res.logHead + 'open file for read OK');
@@ -785,14 +791,14 @@ function deleteRecordedFile(device) {
   findRecordedFile(device, null/*any type*/, function /*on_complete*/(err, filenameAry) {
     if (filenameAry) {
       filenameAry.forEach(function (filename) {
-        fs.unlink(conf.adminWeb.outputDir + '/' + filename);
+        fs.unlink(conf.outputDir + '/' + filename);
       });
     }
   });
 }
 
 function findRecordedFile(device, type/*optional*/, on_complete) {
-  fs.readdir(conf.adminWeb.outputDir, function (err, filenameAry) {
+  fs.readdir(conf.outputDir, function (err, filenameAry) {
     if (err) {
       log('readdir ' + err);
       return on_complete(err);
@@ -957,8 +963,8 @@ function playANPGBuffer(provider, buf, pos, endPos, on_complete1Png /*optional*/
         if (res.dbgIndex === undefined) {
           res.dbgIndex = 0;
         }
-        log('dbg ' + res.dbgIndex + 'out ' + provider.pngCacheLength);
-        fs.writeFileSync(conf.adminWeb.outputDir + '/' + 'dbg' + res.dbgIndex + '.png', provider.pngCache.slice(0, provider.pngCacheLength));
+        log('dbg ' + res.dbgIndex + ' out ' + provider.pngCacheLength);
+        fs.createWriteStream(conf.outputDir + '/' + 'dbg' + res.dbgIndex + '.png').end(provider.pngCache.slice(0, provider.pngCacheLength));
         res.dbgIndex++;
       }
     }
@@ -1469,7 +1475,7 @@ function loadResourceSync() {
   });
 
   //scan recorded files to get device serial numbers ever used
-  fs.readdirSync(conf.adminWeb.outputDir).forEach(function (filename) {
+  fs.readdirSync(conf.outputDir).forEach(function (filename) {
     var match = filename.match(/^([^~]+)~/);
     if (match) {
       var device = querystring.unescape(match[1]);
