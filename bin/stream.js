@@ -24,7 +24,7 @@ log('use configuration: ' + JSON.stringify(conf, null, '  '));
 //************************global var  ****************************************************
 var MIN_FPS = 0.1, MAX_FPS = 30, MAX_RECORDED_FILE_HISTORY_DEPTH = 86400;
 var UPLOAD_LOCAL_DIR = './android', ANDROID_WORK_DIR = '/data/local/tmp/sji-asc';
-var PNG_TAIL_LEN = 8, APNG_CACHE_LEN = 2 * 1024 * 1024 + PNG_TAIL_LEN - 1;
+var PNG_TAIL_LEN = 8, APNG_CACHE_LEN = 4 * 1024 * 1024 + PNG_TAIL_LEN - 1; //todo: restore
 var MULTIPART_BOUNDARY = 'MULTIPART_BOUNDARY', MULTIPART_MIXED_REPLACE = 'multipart/x-mixed-replace;boundary=' + MULTIPART_BOUNDARY;
 var CR = 0xd, LF = 0xa, BUF_CR2 = new Buffer([CR, CR]), BUF_CR = BUF_CR2.slice(0, 1);
 var re_adbNewLineSeq = /\r?\r?\n$/; // CR LF or CR CR LF
@@ -190,7 +190,7 @@ function end(res, dataStrOfBuf) {
       res.setHeader('Content-Type', 'text/html');
     }
   }
-  var s = String(dataStrOfBuf).replace(/\n[ \t]*/g, ' ');
+  var s = dataStrOfBuf === undefined ? '' : String(dataStrOfBuf).replace(/\n[ \t]*/g, ' ');
   log((res.logHead || '') + 'end' + (s ? (': ' + (s.length > 50 ? s.slice(0, 50) + '...' : s)) : ''));
   res.end(dataStrOfBuf);
 }
@@ -512,11 +512,11 @@ function capture(outputStream, q) {
           childProc.stdout.on('data', function (buf) {
             __convertAdbNewLineSeqToLF(provider, buf).forEach(function (buf) {
               if (provider.type === 'apng') { //broadcast animated png image to multiple client
-                __writeAPNG(provider, buf, 0, buf.length);
-              } else if (provider.type === 'webm') {
-                __writeWebm(provider, buf);
-              } else { //write single png image to unique client
-                write(res, buf);
+                playANPGBuffer(provider, buf, 0, buf.length);
+              } else {
+                Object.keys(provider.consumerMap).forEach(function (consumerId) {
+                  write(provider.consumerMap[consumerId], buf);
+                });
               }
             });
           });
@@ -579,8 +579,8 @@ function stopRecording(device) {
   if ((dev = devMgr[device]) && (provider = dev.liveStreamer)) {
     Object.keys(provider.consumerMap).forEach(function (consumerId) {
       if ((_res = provider.consumerMap[consumerId]).filename) { //is file stream
-        log(_res.logHead + 'close file to stop recording');
-        _res.close(); //cause close event and __cleanup will be called
+        log(_res.logHead + 'end file to stop recording');
+        end(_res); //cause close event and __cleanup will be called
       }
     });
   }
@@ -633,7 +633,7 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
             rfile.startTimeMs = Date.now();
             rfile.frameIndex = 0;
           }
-          __writeAPNG(provider, buf, 0, buf.length, on_complete1Png);
+          playANPGBuffer(provider, buf, 0, buf.length, on_complete1Png);
 
           function on_complete1Png(pos/*next png start position*/) {
             if (conf.logAPNGReplayProgress) {
@@ -648,7 +648,7 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
               rfile.pause();
               rfile.apngTimer = setTimeout(function /*__resume*/() {
                 rfile.resume();
-                __writeAPNG(provider, buf, pos, buf.length, on_complete1Png);
+                playANPGBuffer(provider, buf, pos, buf.length, on_complete1Png);
               }, (rfile.startTimeMs + rfile.frameIndex * 1000 / fps) - Date.now());
             }
             else {
@@ -897,7 +897,7 @@ function __cleanup(res, reason) {
 /*
  * write animated png stream to all consumers
  */
-function __writeAPNG(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
+function playANPGBuffer(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
   if (pos >= endPos) {
     return;
   }
@@ -930,7 +930,7 @@ function __writeAPNG(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
         on_complete1Png(pos);
       } else {
         Object.keys(provider.consumerMap).forEach(__complete1Png);
-        __writeAPNG(provider, buf, pos, endPos);
+        playANPGBuffer(provider, buf, pos, endPos);
       }
 
       break;
@@ -952,6 +952,15 @@ function __writeAPNG(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
     var res = provider.consumerMap[consumerId];
     if (res.isAPNGStarted) {
       write(res, provider.pngCache.slice(0, provider.pngCacheLength));
+
+      if (conf.logAPNGReplayProgress) {
+        if (res.dbgIndex === undefined) {
+          res.dbgIndex = 0;
+        }
+        log('dbg ' + res.dbgIndex + 'out ' + provider.pngCacheLength);
+        fs.writeFileSync(conf.adminWeb.outputDir + '/' + 'dbg' + res.dbgIndex + '.png', provider.pngCache.slice(0, provider.pngCacheLength));
+        res.dbgIndex++;
+      }
     }
   }
 
@@ -976,17 +985,7 @@ function __writeAPNG(provider, buf, pos, endPos, on_complete1Png /*optional*/) {
       write(res, '\n--' + MULTIPART_BOUNDARY + '\n' + 'Content-Type:image/png\n\n');
     }
   }
-} //end of __writeAPNG()
-
-
-/*
- * write webm stream to output stream
- */
-function __writeWebm(provider, buf) {
-  Object.keys(provider.consumerMap).forEach(function (consumerId) {
-    write(provider.consumerMap[consumerId], buf);
-  });
-} //end of __writeWebm()
+} //end of playANPGBuffer()
 
 /*
  * convert CRLF or CRCRLF to LF, return array of converted buf. Currently, this function only have effect on Windows OS
