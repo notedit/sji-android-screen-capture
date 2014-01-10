@@ -504,7 +504,7 @@ function capture(outputStream, q) {
           }
           FFMPEG_OUTPUT += ' -'; //means output to stdout
           /*
-           * ------------------------------------start new capture process --------------------------------------
+           * ------------------------------------start new capture process ---------------------------------------------
            */
           var childProc = spawn(provider.logHead, conf.adb, ['-s', q.device, 'shell', 'cd', ANDROID_WORK_DIR, ';', 'sh', './capture.sh', q.fps || 0, q.fps || 1, FFMPEG_OUTPUT, (conf.remoteLogAppend ? '2>>' : '2>'), ANDROID_WORK_DIR + '/log']);
           provider.pid = childProc.pid;
@@ -1083,7 +1083,7 @@ function setDefaultHttpHeader(res) {
   res.setHeader('Pragma', 'no-cache'); // HTTP 1.0.
   res.setHeader('Expires', 0); // Proxies.
   res.setHeader('Vary', '*'); // Proxies.
-  res.setHeader('Content-Type', 'text/html'); //will be overwrite by capture(...)
+  res.setHeader('Content-Type', 'text/html'); //will be overwrite by capture(...), play...
   if (conf.supportXmlHttpRequest) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
@@ -1182,7 +1182,7 @@ function startStreamWeb() {
         }
         downloadRecordedFile(res, q.device, q.fileIndex, q.type);
         break;
-      case '/sampleHtmlToViewLiveCapture':  //------------------------show live capture (Just as a sample) -------------------------
+      case '/sampleHtmlToViewLiveCapture':  //------------------------show live capture (Just as a sample) -------------
         if (chkerrCaptureParameter(q)) {
           return end(res, chkerr);
         }
@@ -1520,7 +1520,11 @@ checkAdb(
 //done: do not show recording file, only show latest recorded file
 //done: check device availability first in /sampleHtmlToViewRecordedFile or /sampleHtmlToViewLiveCapture
 //done: show streaming counter in menu page
+//done: resize and rotate locally by html css3
+//done: add conf.maxRecordedFileSize limitation
 
+//todo: test big file recording
+//todo: apng stream split logic  (Firefox failed to play recorded file some times)
 //todo: test: on Windows OS, IE
 //todo: convert apng to mp4 so can control progress by viewer
 //todo: safari: multipart/x-mixed-replace
