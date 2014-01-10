@@ -46,7 +46,7 @@
   "outputDir": "./output",
 
   //max recorded file size
-  "maxRecordedFileSize": 1024000000,
+  "maxRecordedFileSize": 4096000000,
 
   //accept request from XmlHttpRequest of Browser
   "supportXmlHttpRequest": true,
