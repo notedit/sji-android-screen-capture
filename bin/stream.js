@@ -193,7 +193,7 @@ function end(res, dataStrOfBuf) {
     dataStrOfBuf = '';
   } else {
     if (res.setHeader && !res.headersSent && (res.getHeader('Content-Type') || '').slice(0, 5) !== 'text/') {
-      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('Content-Type', 'text/plain');
     }
   }
   var s = dataStrOfBuf === undefined ? '' : String(dataStrOfBuf).replace(/\n[ \t]*/g, ' ');
@@ -1083,7 +1083,7 @@ function setDefaultHttpHeader(res) {
   res.setHeader('Pragma', 'no-cache'); // HTTP 1.0.
   res.setHeader('Expires', 0); // Proxies.
   res.setHeader('Vary', '*'); // Proxies.
-  res.setHeader('Content-Type', 'text/html'); //will be overwrite by capture(...), play...
+  res.setHeader('Content-Type', 'text/plain');
   if (conf.supportXmlHttpRequest) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
@@ -1188,6 +1188,7 @@ function startStreamWeb() {
         }
         uploadFile(q.device,
             function /*on_ok*/() {
+              res.setHeader('Content-Type', 'text/html');
               end(res, htmlCache[q.type + '.html'] //this html will in turn open URL /capture?....
                   .replace(/#device\b/g, htmlEncode(q.device))
                   .replace(/@by\b/g, 'capture')
@@ -1213,6 +1214,7 @@ function startStreamWeb() {
           if (!filenameAry || !filenameAry[q.fileIndex || 0]) {
             return end(res, err ? 'file operation error' : 'file not found');
           }
+          res.setHeader('Content-Type', 'text/html');
           return end(res, htmlCache[q.type + '.html'] //this html will in turn open URL /playRecordedFile?....
               .replace(/#device\b/g, htmlEncode(q.device))
               .replace(/@by\b/g, 'playRecordedFile')
@@ -1304,16 +1306,27 @@ function startAdminWeb() {
             if (chkerrCaptureParameter(q)) {
               return end(res, chkerr);
             }
+            var okAry = [], errAry = [];
             (Array.isArray(deviceAryOr1) ? uniqueNonEmptyArray(deviceAryOr1) : [deviceAryOr1]).forEach(
-                function (device) {
+                function (device, i, devAry) {
                   var _q = {};
                   Object.keys(q).forEach(function (k) {
                     _q[k] = q[k];
                   });
                   _q.device = device;
-                  startRecording(_q);
+                  startRecording(_q,
+                      function/*on_prepared*/(err, wfile) {
+                        if (err) {
+                          errAry.push(devAry.length > 1 ? device + ': ' + err : err);
+                        } else {
+                          okAry.push((devAry.length > 1 ? device + ' OK: ' : 'OK: ') + wfile.filename.slice(-nowStr.LEN));
+                        }
+                        if (errAry.length + okAry.length === devAry.length) { //loop completed, now write response
+                          end(res, okAry.concat(errAry).join('\n'));
+                        }
+                      }
+                  );
                 });
-            end(res, 'OK');
             break;
           case 'stopRecording': //----------------------------------stop recording file---------------------------------
             if (chkerrRequired('device[]', q.device)) {
@@ -1341,7 +1354,6 @@ function startAdminWeb() {
         }
         spawn('[getInternalLog]', conf.adb, ['-s', q.device, 'shell', 'cat', ANDROID_WORK_DIR + '/log'],
             function  /*on_close*/(ret, stdout, stderr) {
-              res.setHeader('Content-Type', 'text/plain');
               end(res, stdout || (stderr ? stderr.replace(/^error: */i, '') : 'unknown error'));
             }, {noLogStdout: true});
         break;
@@ -1383,6 +1395,7 @@ function startAdminWeb() {
               html = html
                   .replace(/<!--repeatBegin-->[^\0]*<!--repeatEnd-->/, createMultipleHtmlRows);
 
+              res.setHeader('Content-Type', 'text/html');
               end(res, html
                   .replace(/#adminKey\b/g, htmlEncode(q.adminKey || ''))
                   .replace(/@adminKey\b/g, querystring.escape(q.adminKey || ''))
@@ -1423,7 +1436,7 @@ function startAdminWeb() {
               }
             });
         break;
-      case '/jquery-2.0.3.js':
+      case '/jquery-2.0.3.js': //todo: delete
         res.setHeader('Content-Type', 'text/javascript');
         end(res, htmlCache['jquery-2.0.3.js']);
         break;
@@ -1523,6 +1536,7 @@ checkAdb(
 //done: resize and rotate locally by html css3
 //done: add conf.maxRecordedFileSize limitation
 
+//todo: support replay specified recorded file by fileIndex querystring
 //todo: test big file recording
 //todo: apng stream split logic  (Firefox failed to play recorded file some times)
 //todo: test: on Windows OS, IE
