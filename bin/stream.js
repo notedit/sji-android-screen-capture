@@ -22,9 +22,9 @@ if (!conf) {
 log('use configuration: ' + JSON.stringify(conf, null, '  '));
 
 //************************global var  ****************************************************
-var MIN_FPS = 0.1, MAX_FPS = 30, MAX_RECORDED_FILE_HISTORY_DEPTH = 86400;
+var MIN_FPS = 0.1, MAX_FPS = 30;
 var UPLOAD_LOCAL_DIR = './android', ANDROID_WORK_DIR = '/data/local/tmp/sji-asc';
-var PNG_TAIL_LEN = 8, APNG_CACHE_LEN = 4 * 1024 * 1024 + PNG_TAIL_LEN - 1; //todo: restore
+var PNG_TAIL_LEN = 8, APNG_CACHE_LEN = 6 * 1024 * 1024 + PNG_TAIL_LEN - 1; //todo: restore
 var MULTIPART_BOUNDARY = 'MULTIPART_BOUNDARY', MULTIPART_MIXED_REPLACE = 'multipart/x-mixed-replace;boundary=' + MULTIPART_BOUNDARY;
 var CR = 0xd, LF = 0xa, BUF_CR2 = new Buffer([CR, CR]), BUF_CR = BUF_CR2.slice(0, 1);
 var re_adbNewLineSeq = /\r?\r?\n$/; // CR LF or CR CR LF
@@ -85,7 +85,11 @@ function spawn(logHead, _path, args, on_close, opt) {
 }
 
 function beautifyErrMsg(err) {
-  return err.toString().replace('EACCES', 'EACCES(access denied)').replace('ENOENT', 'ENOENT(not found)').replace('EADDRINUSE', 'EADDRINUSE(ip:port already in use)');
+  return err.toString().replace('EACCES', 'EACCES(access denied)').replace('ENOENT', 'ENOENT(not found)').replace('EADDRINUSE', 'EADDRINUSE(ip:port already in use)').replace(/\r*\n$/, '');
+}
+
+function beautifyStderr(stderr) {
+  return stderr.replace(/^error: */i, '').replace(/\r*\n$/, '');
 }
 
 function htmlEncode(text) {
@@ -138,15 +142,15 @@ function chkerrRequired(name, value /*candidateArray | candidateValue | candidat
   }
   if (arguments.length === 3) { //check against array
     if (value === undefined || (Array.isArray(arguments[2]) ? arguments[2] : [arguments[2]]).indexOf(value) < 0) {
-      return setchkerr(name + ' parameter is not in ' + JSON.stringify(arguments[2]));
+      return setchkerr(name + ' parameter must be in ' + JSON.stringify(arguments[2]));
     }
   } else if (arguments.length === 4) { //check against range
     if (value === undefined || !(value >= arguments[2] && value <= arguments[3])) { //do not use v < min || v > max due to NaN always cause false
-      return setchkerr(name + ' parameter is not in (' + arguments[2] + ' ~ ' + arguments[3] + ')');
+      return setchkerr(name + ' parameter must be in (' + arguments[2] + ' ~ ' + arguments[3] + ')');
     }
   } else { //check required only
     if (!value) {
-      return setchkerr(name + ' parameter is not specified');
+      return setchkerr(name + ' parameter must be specified');
     }
     if (Array.isArray(value)) { //check array type value
       if (canBeArray) {
@@ -223,7 +227,7 @@ function getAllDev(on_ok, on_error) {
   spawn('[getAllDev]', conf.adb, ['devices'],
       function /*on_close*/(ret, stdout, stderr) {
         if (ret !== 0 || stderr) {
-          return on_error(stderr ? stderr.replace(/^error: */i, '') : 'getAllDev error');
+          return on_error(stderr ? beautifyStderr(stderr) : 'getAllDev error');
         }
         var deviceList = [], parts;
         stdout.split('\n').slice(1/*from second line*/).forEach(function (lineStr) {
@@ -294,7 +298,7 @@ function uploadFile(device, on_ok, on_error) {
     spawn('[getRemoteVer]', conf.adb, ['-s', device, 'shell', 'cat', ANDROID_WORK_DIR + '/version'],
         function /*on_close*/(ret, stdout, stderr) {
           if (ret !== 0 || stderr) {
-            on_error(stderr ? stderr.replace(/^error: */i, '') : 'getRemoteVer error');
+            on_error(stderr ? beautifyStderr(stderr) : 'getRemoteVer error');
           } else {
             // BTW, detect new line sequence returned by adb
             devMgr[device].CrCount = stdout.match(re_adbNewLineSeq)[0].length - 1/*LF*/ - 1/*another CR will be removed by stty -oncr*/;
@@ -305,12 +309,12 @@ function uploadFile(device, on_ok, on_error) {
               spawn('[uploadFile]', conf.adb, ['-s', device , 'push', UPLOAD_LOCAL_DIR, ANDROID_WORK_DIR],
                   function /*on_close*/(ret, stdout, stderr) {
                     if (ret !== 0) {
-                      on_error(stderr ? stderr.replace(/^error: */i, '') : 'uploadFile error');
+                      on_error(stderr ? beautifyStderr(stderr) : 'uploadFile error');
                     } else {
                       spawn('[updateRemoteVer]', conf.adb, ['-s', device, 'shell', 'echo', uploadFile.ver, '>', ANDROID_WORK_DIR + '/version'],
                           function /*on_close*/(ret, stdout, stderr) {
                             if (ret !== 0 || stdout || stderr) {
-                              on_error(stderr ? stderr.replace(/^error: */i, '') : 'updateRemoteVer error');
+                              on_error(stderr ? beautifyStderr(stderr) : 'updateRemoteVer error');
                             } else {
                               devMgr[device].uploaded = true;
                               on_ok();
@@ -328,13 +332,13 @@ function chkerrCaptureParameter(q) {
   if (chkerrRequired('device', q.device) ||
       chkerrRequired('type', q.type, ['apng', 'webm', 'png']) ||
       q.type !== 'png' && chkerrRequired('fps', (q.fps = Number(q.fps)), MIN_FPS, MAX_FPS) ||
-      chkerrOptional('rotate(optional)', (q.rotate = Number(q.rotate)), [0, 90, 270])) {
+      chkerrOptional('rotate', (q.rotate = Number(q.rotate)), [0, 90, 270])) {
     return chkerr;
   }
   var n, match;
   if (q.scale) {
     if (!isNaN((n = Number(q.scale)))) { //can convert to a valid number
-      if (chkerrRequired('number formatted scale(optional)', (q.scale = n), 0.1/*min*/, 1/*max*/)) {
+      if (chkerrRequired('number formatted scale', (q.scale = n), 0.1/*min*/, 1/*max*/)) {
         return chkerr;
       }
       if (q.scale === 1) {
@@ -342,7 +346,7 @@ function chkerrCaptureParameter(q) {
       }
     } else { //treat as string format 9999x9999
       if (!(match = (q.scale = String(q.scale)).match(/^(\d{0,4})x(\d{0,4})$/)) || !match[1] && !match[2]) {
-        return setchkerr('string formatted scale(optional) parameter is not pattern "9999x9999" or "9999x" or "x9999"');
+        return setchkerr('string formatted scale parameter must be in pattern "9999x9999" or "9999x" or "x9999"');
       }
       q.scale_w = match[1] ? Number(match[1]) : 0;
       q.scale_h = match[2] ? Number(match[2]) : 0;
@@ -363,9 +367,13 @@ function chkerrCaptureParameter(q) {
 
 function stringifyCaptureParameter(q, format /*undefined, 'filename', 'querystring'*/) {
   if (format === 'querystring') {
-    return ['device', 'accessKey', 'type', 'fps', 'scale', 'rotate', 'recordOption', 'fileIndex'].reduce(function (joinedStr, name) {
-      return q[name] ? (joinedStr + '&' + name + '=' + querystring.escape(q[name])) : joinedStr;
-    }, ''/*initial joinedStr*/).slice(1/*remove first &*/);
+    var kvAry = [];
+    ['device', (conf.adminWeb.adminKey ? 'accessKey' : ''), 'type', 'fps', 'scale', 'rotate'].forEach(function (name) {
+      if (name) {
+        kvAry.push(name + '=' + querystring.escape(q[name] || '')); //0, NaN are replaced by empty string
+      }
+    });
+    return kvAry.join('&');
   } else {
     var fps_scale_rotate = '';
     if (q.fps) {
@@ -395,10 +403,9 @@ function stringifyCaptureParameter(q, format /*undefined, 'filename', 'querystri
  * Capture screen, send result to output stream 'res'.
  * Please call chkerrCaptureParameter before this function.
  * @param outputStream result stream (e.g. HTTP response or file stream)
- * @param q option
+ * @param q option, Must have been checked by !chkerrCaptureParameter(q)
  *  {
  *    device:  device serial number
- *    accessKey: [optional] access key for the device when in secure mode (conf.adminWeb.adminKey is set)
       type:    'apng' or 'webm' or 'png'
       fps:     [optional] rate for webm and apng. must be in range MIN_FPS~MAX_FPS
       scale:   [optional] 0.1 - 1 or string in format 9999x9999 or 9999x or x9999
@@ -454,7 +461,7 @@ function capture(outputStream, q) {
   /*
    * add consumer
    */
-  res.provider = provider;
+  res.streamProvider = provider;
   res.consumerId = ++provider.lastConsumerId;
   provider.consumerMap[res.consumerId] = res;
   res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer#' + res.consumerId + ' of ' + provider.logHead.slice(1, -1) + ']';
@@ -541,7 +548,7 @@ function capture(outputStream, q) {
   }
 }
 
-function startRecording(q, on_prepared) {
+function startRecording(q/*same as capture*/, on_prepared) {
   uploadFile(q.device,
       function /*on_ok*/() {
         var filename = stringifyCaptureParameter(q, 'filename');
@@ -581,12 +588,12 @@ function startRecording(q, on_prepared) {
 }
 
 function stopRecording(device) {
-  var dev, provider, _res;
+  var dev, provider, res;
   if ((dev = devMgr[device]) && (provider = dev.liveStreamer)) {
     Object.keys(provider.consumerMap).forEach(function (consumerId) {
-      if ((_res = provider.consumerMap[consumerId]).filename) { //is file stream
-        log(_res.logHead + 'end file to stop recording');
-        end(_res); //cause close event and __cleanup will be called
+      if ((res = provider.consumerMap[consumerId]).filename) { //is file stream
+        log(res.logHead + 'end file to stop recording');
+        end(res); //cause end, close event
       }
     });
   }
@@ -602,65 +609,105 @@ function getRecordingFileName(device, type/*optional*/) {
   return filename;
 }
 
-function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
-  findRecordedFile(device, 'apng', function /*on_complete*/(err, filenameAry) {
+function chkerrRecordedFileParameter(q, forDownload) {
+  if (chkerrRequired('device', q.device) ||
+      chkerrRequired('type', q.type, ['apng', 'webm']) ||
+      !forDownload && q.type === 'apng' && chkerrOptional('fps', (q.fps = Number(q.fps)), MIN_FPS, MAX_FPS)) {
+    return chkerr;
+  }
+  return '';
+}
+
+function stringifyRecordedFileParameter(q, format/*'querystring'*/) {
+  if (format === 'querystring') {
+    var kvAry = [];
+    ['device', (conf.adminWeb.adminKey ? 'accessKey' : ''), 'type', 'fileIndex', (q.type === 'apng' ? 'fps' : '')].forEach(function (name) {
+      if (name) {
+        kvAry.push(name + '=' + querystring.escape(q[name] || '')); //0, NaN are replaced by empty string
+      }
+    });
+    return kvAry.join('&');
+  }
+  return JSON.stringify(q);
+}
+
+/**
+ * Play or download recorded file
+ * must have been checked by !chkerrRecordedFileParameter(q)
+ * @param httpOutputStream
+ * @param q option. must have been checked by !chkerrRecordedFileParameter(q)
+ *  {
+ *    device:  device serial number
+      type:    'apng' or 'webm'
+      fileIndex: [optional] number or timestamp like 20140110_153928_704_000.
+                Bigger number means older file. E.g. 1 means 1 generation older file.
+      fps:     [optional] rate for apng only. must be in range MIN_FPS~MAX_FPS
+    }
+ * @param forDownload  true/false
+ */
+function playRecordedFile(httpOutputStream, q, forDownload/*optional*/) {
+  findRecordedFiles(q.device, q.type, function /*on_complete*/(err, filenameAry) {
     var res = httpOutputStream, filename;
-    if (!filenameAry || !(filename = filenameAry[fileIndex || 0])) {
+    if (!filenameAry || !(filename = filenameAry[q.fileIndex || 0])) {
       return end(res, err ? 'file operation error' : 'file not found');
     }
-    if (!fps) {
-      fps = Number(filename.slice(querystring.escape(device).length + '~apng~f'.length).match(/^[0-9.]+/));
-    }
-    var provider = {consumerMap: {undefined: res}};
-    res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of [play: ' + filename + ']';
-
-    res.setHeader('Content-Type', MULTIPART_MIXED_REPLACE);
+    res.logHead = (res.logHead || '[]').slice(0, -1) + ' ' + (forDownload ? 'download' : 'play') + ': ' + filename + ']';
 
     var rfile = fs.createReadStream(conf.outputDir + '/' + filename);
 
     rfile.on('open', function (fd) {
       log(res.logHead + 'open file for read OK');
-      fs.fstat(fd, function (err, stats) {
+      fs.fstat(fd, function/*on_complete*/(err, stats) {
         if (err) {
-          log('fstat ' + err);
-          rfile.myRestSize = 0x10000000000000000;
-        } else {
-          rfile.myRestSize = stats.size;
+          log(res.logHead + 'fstat ' + err);
+          return end(res, 'file operation error'); //will cause res.close event and cause call rfile.close
         }
-
-        rfile.streamerId = registerStaticStreamer(device, 'apng');
+        res.setHeader('Content-Type', (!forDownload && q.type === 'apng') ? MULTIPART_MIXED_REPLACE : 'video/' + q.type);
+        if (forDownload) {
+          res.setHeader('Content-Disposition', 'attachment;filename=asc~' + filename + '.' + q.type);
+          res.setHeader('Content-Length', stats.size);
+        } else {
+          if (q.type === 'apng') {
+            if (!q.fps) {
+              q.fps = Number(filename.slice(querystring.escape(q.device).length + '~apng~f'.length).match(/^[0-9.]+/));
+            }
+          }
+        }
+        rfile.streamerId = registerStaticStreamer(q.device, q.type);
+        rfile.restSize = stats.size;
 
         rfile.on('data', function (buf) {
-          rfile.myRestSize -= buf.length;
-          if (rfile.myRestSize < 0) { //means file is growing
-            rfile.myRestSize = 0x10000000000000000;
+          if (buf.length > rfile.restSize) { //do not play growing content
+            buf = buf.slice(0, rfile.restSize);
           }
-          if (!rfile.startTimeMs) {
-            rfile.startTimeMs = Date.now();
-            rfile.frameIndex = 0;
+          rfile.restSize -= buf.length;
+
+          if (q.type === 'apng') { //play apng specially, translate it to multipart output
+            if (!rfile.consumerMap) {
+              rfile.consumerMap = {undefined: res};
+              rfile.startTimeMs = Date.now();
+              rfile.frameIndex = 0;
+            }
+            playANPGBuffer(rfile/*as provider*/, buf, 0, buf.length, on_complete1Png);
           }
-          playANPGBuffer(provider, buf, 0, buf.length, on_complete1Png);
+          else { //for normal video or download, just write content
+            write(res, buf);
+          }
 
           function on_complete1Png(pos/*next png start position*/) {
             if (conf.logAPNGProgress) {
-              log(res.logHead + 'apng frame ' + rfile.frameIndex + ' completed');
+              log((forDownload ? '[download: ' : '[play: ') + rfile.filename + ']frame ' + rfile.frameIndex + ' completed' + ((rfile.restSize === 0 && pos >= buf.length) ? '(last)' : ''));
             }
-            if (pos < buf.length || rfile.myRestSize > 0) { //if have rest data
+            if (pos < buf.length || rfile.restSize > 0) { //if have rest data
               //write next content-type early to force Chrome draw previous image immediately.
               //For last image, do not write next content-type head because it cause last image view invalidated.
               write(res, '\n--' + MULTIPART_BOUNDARY + '\n' + 'Content-Type:image/png\n\n');
-
               rfile.frameIndex++;
               rfile.pause();
               rfile.apngTimer = setTimeout(function /*__resume*/() {
                 rfile.resume();
-                playANPGBuffer(provider, buf, pos, buf.length, on_complete1Png);
-              }, (rfile.startTimeMs + rfile.frameIndex * 1000 / fps) - Date.now());
-            }
-            else {
-              if (conf.logAPNGProgress) {
-                log(res.logHead + 'apng last frame completed');
-              }
+                playANPGBuffer(rfile/*as provider*/, buf, pos, buf.length, on_complete1Png);
+              }, (rfile.startTimeMs + rfile.frameIndex * 1000 / q.fps) - Date.now());
             }
           }
         });
@@ -669,13 +716,14 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
           log(res.logHead + 'file end');
           end(res);
         });
+        return null; //just for avoiding compiler warning
       });
     });
 
     rfile.on('close', function () {
       log(res.logHead + 'file closed');
       clearTimeout(rfile.apngTimer);
-      unregisterStaticStreamer(device, rfile.streamerId);
+      unregisterStaticStreamer(q.device, rfile.streamerId);
     });
 
     rfile.on('error', function (err) {
@@ -691,104 +739,8 @@ function playRecordedFile_apng(httpOutputStream, device, fileIndex, fps) {
   });
 }
 
-function playRecordedFile_simple(httpOutputStream, device, fileIndex, type) {
-  findRecordedFile(device, type, function /*on_complete*/(err, filenameAry) {
-    var res = httpOutputStream, filename;
-    if (!filenameAry || !(filename = filenameAry[fileIndex || 0])) {
-      return end(res, err ? 'file operation error' : 'file not found');
-    }
-    res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of play: ' + filename + ']';
-
-    res.setHeader('Content-Type', 'video/' + type);
-
-    var rfile = fs.createReadStream(conf.outputDir + '/' + filename);
-
-    rfile.on('open', function (/*fd*/) {
-      log(res.logHead + 'open file for read OK');
-      rfile.streamerId = registerStaticStreamer(device, type);
-    });
-
-    rfile.on('close', function () {
-      log(res.logHead + 'file closed');
-      unregisterStaticStreamer(device, rfile.streamerId);
-    });
-
-    rfile.on('data', function (buf) {
-      write(res, buf);
-    });
-
-    rfile.on('end', function () {
-      log(res.logHead + 'file end');
-      end(res);
-    });
-
-    rfile.on('error', function (err) {
-      log(res.logHead + beautifyErrMsg(err));
-      end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
-    });
-
-    //stop if http connection is closed by peer
-    res.on('close', function () {
-      rfile.close();
-    });
-    return null; //just for avoiding compiler warning}
-  });
-}
-
-function downloadRecordedFile(httpOutputStream, device, fileIndex, type) {
-  findRecordedFile(device, type, function /*on_complete*/(err, filenameAry) {
-    var res = httpOutputStream, filename;
-    if (!filenameAry || !(filename = filenameAry[fileIndex || 0])) {
-      return end(res, err ? 'file operation error' : 'file not found');
-    }
-    res.logHead = (res.logHead || '[]').slice(0, -1) + ' consumer of download: ' + filename + ']';
-
-    res.setHeader('Content-Type', 'video/' + type);
-    res.setHeader('Content-Disposition', 'attachment;filename=asc~' + filename + '.' + type);
-
-    var rfile = fs.createReadStream(conf.outputDir + '/' + filename);
-
-    rfile.on('open', function (fd) {
-      log(res.logHead + 'open file for read OK');
-      fs.fstat(fd, function (err, stats) {
-        if (err) {
-          log('fstat ' + err);
-        } else {
-          res.setHeader('Content-Length', stats.size);
-        }
-        rfile.streamerId = registerStaticStreamer(device, type);
-
-        rfile.on('data', function (buf) {
-          write(res, buf);
-        });
-
-        rfile.on('end', function () {
-          log(res.logHead + 'file end');
-          end(res);
-        });
-      });
-    });
-
-    rfile.on('close', function () {
-      log(res.logHead + 'file closed');
-      unregisterStaticStreamer(device, rfile.streamerId);
-    });
-
-    rfile.on('error', function (err) {
-      log(res.logHead + beautifyErrMsg(err));
-      end(res, err.code === 'ENOENT' ? 'file not found' : 'file operation error');
-    });
-
-    //stop if http connection is closed by peer
-    res.on('close', function () {
-      rfile.close();
-    });
-    return null; //just for avoiding compiler warning
-  });
-}
-
-function deleteRecordedFile(device) {
-  findRecordedFile(device, null/*any type*/, function /*on_complete*/(err, filenameAry) {
+function deleteRecordedFiles(device) {
+  findRecordedFiles(device, null/*any type*/, function /*on_complete*/(err, filenameAry) {
     if (filenameAry) {
       filenameAry.forEach(function (filename) {
         fs.unlink(conf.outputDir + '/' + filename);
@@ -797,7 +749,7 @@ function deleteRecordedFile(device) {
   });
 }
 
-function findRecordedFile(device, type/*optional*/, on_complete) {
+function findRecordedFiles(device, type/*optional*/, on_complete) {
   fs.readdir(conf.outputDir, function (err, filenameAry) {
     if (err) {
       log('readdir ' + err);
@@ -813,10 +765,15 @@ function findRecordedFile(device, type/*optional*/, on_complete) {
     });
 
     //sort by time (newer first)
-    filenameAry = filenameAry.sort(function (a, b) {
+    filenameAry.sort(function (a, b) {
       a = a.slice(-nowStr.LEN);
       b = b.slice(-nowStr.LEN);
       return (a < b) ? 1 : (a > b) ? -1 : 0;
+    });
+
+    //make it searchable by timestamp
+    filenameAry.forEach(function (filename) {
+      filenameAry[filename.slice(-nowStr.LEN)] = filename;
     });
 
     return on_complete('', filenameAry);
@@ -873,7 +830,7 @@ function __cleanup(res, reason) {
 
   log(res.logHead + 'clean_up' + (reason ? (' due to ' + reason) : ''));
 
-  var provider = res.provider;
+  var provider = res.streamProvider;
   if (res.childConsumerId && provider.consumerMap[res.childConsumerId]) {
     __cleanup(provider.consumerMap[res.childConsumerId], 'parent consumer is closed');
   }
@@ -963,8 +920,8 @@ function playANPGBuffer(provider, buf, pos, endPos, on_complete1Png /*optional*/
         if (res.pngIndex === undefined) {
           res.pngIndex = 0;
         }
-        var filename = (res.filename || 'play_result') + '_' + res.pngIndex + '.png';
-        log('png ' + filename + ' length ' + provider.pngCacheLength);
+        var filename = (res.filename ? res.filename + '_write' : provider.filename ? provider.filename + '_read' : 'http_write') + '_png_' + res.pngIndex + '.png';
+        log(filename + ' length ' + provider.pngCacheLength);
         fs.createWriteStream(conf.outputDir + '/' + filename).end(provider.pngCache.slice(0, provider.pngCacheLength));
         res.pngIndex++;
       }
@@ -1133,7 +1090,7 @@ function startStreamWeb() {
 
     var parsedUrl = url.parse(req.url, true/*querystring*/), q = parsedUrl.query;
     if (!process) { //impossible condition. Just prevent jsLint/jsHint warning of 'undefined member ... variable of ...'
-      q = {device: '', accessKey: '', type: '', fps: 0, scale: 0, rotate: 0, recordOption: ''};
+      q = {device: '', accessKey: '', type: '', fps: 0, scale: 0, rotate: 0, recordOption: '', fileIndex: 0};
     }
     if (chkerrPublicAccess(q)) {
       return end(res, chkerr);
@@ -1141,10 +1098,11 @@ function startStreamWeb() {
 
     switch (parsedUrl.pathname) {
       case '/capture': //---------------------------send capture result to browser & optionally save to file------------
-        if (chkerrCaptureParameter(q) || chkerrOptional('option(optional)', q.recordOption, ['sync', 'async'])) {
+        if (chkerrCaptureParameter(q) ||
+            q.type === 'webm' && chkerrOptional('recordOption', q.recordOption, ['sync', 'async'])) {
           return end(res, chkerr);
         }
-        if (q.recordOption) { //need record
+        if (q.type === 'webm' && q.recordOption) { //need record webm video at same time
           startRecording(q,
               function/*on_prepared*/(err, wfile) {
                 if (err) {
@@ -1162,25 +1120,16 @@ function startStreamWeb() {
         }
         break;
       case '/playRecordedFile': //---------------------------replay recorded file---------------------------------------
-        if (chkerrRequired('device', q.device) ||
-            chkerrRequired('type', q.type, ['apng', 'webm']) ||
-            chkerrOptional('fileIndex', (q.fileIndex = Number(q.fileIndex)), 0, MAX_RECORDED_FILE_HISTORY_DEPTH) ||
-            q.type === 'apng' && chkerrOptional('fps', (q.fps = Number(q.fps)), MIN_FPS, MAX_FPS)) {
+        if (chkerrRecordedFileParameter(q, false/*forPlay*/)) {
           return end(res, chkerr);
         }
-        if (q.type === 'apng') {
-          playRecordedFile_apng(res, q.device, q.fileIndex, q.fps);
-        } else { //webm
-          playRecordedFile_simple(res, q.device, q.fileIndex, q.type);
-        }
+        playRecordedFile(res, q, false/*forPlay*/);
         break;
       case '/downloadRecordedFile': //---------------------download recorded file---------------------------------------
-        if (chkerrRequired('device', q.device) ||
-            chkerrRequired('type', q.type, ['apng', 'webm']) ||
-            chkerrOptional('fileIndex', (q.fileIndex = Number(q.fileIndex)), 0, MAX_RECORDED_FILE_HISTORY_DEPTH)) {
+        if (chkerrRecordedFileParameter(q, true/*forDownload*/)) {
           return end(res, chkerr);
         }
-        downloadRecordedFile(res, q.device, q.fileIndex, q.type);
+        playRecordedFile(res, q, true/*forDownload*/);
         break;
       case '/sampleHtmlToViewLiveCapture':  //------------------------show live capture (Just as a sample) -------------
         if (chkerrCaptureParameter(q)) {
@@ -1204,13 +1153,10 @@ function startStreamWeb() {
         );
         break;
       case '/sampleHtmlToViewRecordedFile':  //----------------------show recorded file  (Just as a sample)-------------
-        if (chkerrRequired('device', q.device) ||
-            chkerrRequired('type', q.type, ['apng', 'webm']) ||
-            chkerrOptional('fileIndex', (q.fileIndex = Number(q.fileIndex)), 0, MAX_RECORDED_FILE_HISTORY_DEPTH) ||
-            chkerrOptional('fps', (q.fps = Number(q.fps)), MIN_FPS, MAX_FPS)) {
+        if (chkerrRecordedFileParameter(q, false/*forPlay*/)) {
           return end(res, chkerr);
         }
-        findRecordedFile(q.device, q.type, function/*on_complete*/(err, filenameAry) {
+        findRecordedFiles(q.device, q.type, function/*on_complete*/(err, filenameAry) {
           if (!filenameAry || !filenameAry[q.fileIndex || 0]) {
             return end(res, err ? 'file operation error' : 'file not found');
           }
@@ -1218,7 +1164,7 @@ function startStreamWeb() {
           return end(res, htmlCache[q.type + '.html'] //this html will in turn open URL /playRecordedFile?....
               .replace(/#device\b/g, htmlEncode(q.device))
               .replace(/@by\b/g, 'playRecordedFile')
-              .replace(/@q\b/g, stringifyCaptureParameter(q, 'querystring'))
+              .replace(/@q\b/g, stringifyRecordedFileParameter(q, 'querystring'))
               .replace(/#LiveOrStatic\b/g, 'Recorded Video')
               .replace(/#show_ifLiveView\b/g, 'none')
               .replace(/#show_ifViewRecordedFile\b/g, '')
@@ -1249,7 +1195,7 @@ function startAdminWeb() {
   log(httpServer.logHead + 'listen on ' + ( _isAnyIp ? '*' : conf.adminWeb.ip) + ':' + conf.adminWeb.port);
   httpServer.listen(conf.adminWeb.port, _isAnyIp ? undefined : conf.adminWeb.ip,
       function/*on_ok*/() {
-        log(httpServer.logHead + 'OK. You can start from http' + smark + '://' + (_isAnyIp ? '127.0.0.1' : conf.adminWeb.ip) + ':' + conf.adminWeb.port + '/?adminKey=' + (conf.adminWeb.adminKey || ''), {stderr: true});
+        log(httpServer.logHead + 'OK. You can start from http' + smark + '://' + (_isAnyIp ? '127.0.0.1' : conf.adminWeb.ip) + ':' + conf.adminWeb.port + (conf.adminWeb.adminKey ? '/?adminKey=' + conf.adminWeb.adminKey : ''), {stderr: true});
       });
 
   function handler(req, res) {
@@ -1336,12 +1282,12 @@ function startAdminWeb() {
             (Array.isArray(q.device) ? uniqueNonEmptyArray(q.device) : [q.device]).forEach(stopRecording);
             end(res, 'OK');
             break;
-          case 'deleteRecordedFile'://-----------------------------delete recorded file---------------------------------
+          case 'deleteRecordedFiles'://-----------------------------delete recorded file---------------------------------
             if (chkerrRequired('device[]', q.device)) {
               return end(res, chkerr);
             }
             //delete recorded file on single or multiple devices
-            (Array.isArray(q.device) ? uniqueNonEmptyArray(q.device) : [q.device]).forEach(deleteRecordedFile);
+            (Array.isArray(q.device) ? uniqueNonEmptyArray(q.device) : [q.device]).forEach(deleteRecordedFiles);
             end(res, 'OK');
             break;
           default :
@@ -1354,8 +1300,24 @@ function startAdminWeb() {
         }
         spawn('[getInternalLog]', conf.adb, ['-s', q.device, 'shell', 'cat', ANDROID_WORK_DIR + '/log'],
             function  /*on_close*/(ret, stdout, stderr) {
-              end(res, stdout || (stderr ? stderr.replace(/^error: */i, '') : 'unknown error'));
+              end(res, (stdout || beautifyStderr(stderr)).replace(/\0/g, '') || 'unknown error');
             }, {noLogStdout: true});
+        break;
+      case '/getDeviceCpuMemTop':  //--------------------------------get internal log file----------------------------------
+        if (chkerrRequired('device', q.device)) {
+          return end(res, chkerr);
+        }
+        uploadFile(q.device,
+            function /*on_ok*/() {
+              spawn('[getDeviceCpuMemTop]', conf.adb, ['-s', q.device, 'shell', 'chmod', '755', ANDROID_WORK_DIR + '/busybox', '&&', ANDROID_WORK_DIR + '/busybox', 'top', '-b', '-n' , '1'],
+                  function  /*on_close*/(ret, stdout, stderr) {
+                    end(res, (stdout || beautifyStderr(stderr)).replace(/\0/g, '') || 'unknown error');
+                  }, {noLogStdout: true});
+            },
+            function/*on_error*/(err) {
+              end(res, err);
+            }
+        );
         break;
       case '/': //---------------------------------------show menu of all devices---------------------------------------
         q.fps = q.fps || 4;
@@ -1376,35 +1338,44 @@ function startAdminWeb() {
                 });
               }
 
-              var html = htmlCache['menu.html']
-                      .replace(/#dev_enum_err\b/g, htmlEncode(err))
-                      .replace(/[@#]MIN_FPS\b/g, String(MIN_FPS))
-                      .replace(/[@#]MAX_FPS\b/g, String(MAX_FPS))
-                      .replace(new RegExp('name="rotate" value="' + q.rotate + '"', 'g'), '$& checked')
-                      .replace(/#show_ifStreamWebLocal\b/g, conf.ip === 'localhost' || conf.ip === '127.0.0.1' ? '' : 'none')
-                      .replace(/#show_ifAdminWebLocal\b/g, conf.adminWeb.ip === 'localhost' || conf.adminWeb.ip === '127.0.0.1' ? '' : 'none')
-                      .replace(/#hide_ifStreamWebSSL\b/g, conf.ssl.on ? 'none' : '')
-                      .replace(/#hide_ifAdminWebSSL\b/g, conf.adminWeb.ssl.on ? 'none' : '')
-                      .replace(/#hide_ifAdminKey\b/g, conf.adminWeb.adminKey ? 'none' : '')
-                  ;
+              var html = htmlCache['menu.html'];
 
+              //replace something concerned with adminKey
+              if (!conf.adminWeb.adminKey) { //clear some unnecessary querystring
+                html = html.replace(/&accessKey=@accessKey\b/g, '')
+                    .replace(/&adminKey=@adminKey\b/g, '').replace(/\?adminKey=@adminKey&/g, '?').replace(/\?adminKey=@adminKey\b(?!&)/g, '');
+              } else {
+                html = html.replace(/@adminKey\b/g, querystring.escape(conf.adminWeb.adminKey));
+              }
+              html = html.replace(/#adminKey\b/g, htmlEncode(conf.adminWeb.adminKey || ''));
+
+              //disable/check some buttons
               dynamicConfKeyList.forEach(function (k) {
                 html = html.replace(new RegExp(k + '=' + (conf[k] ? 'true' : 'false') + '"><button', 'g'), '$& disabled');
               });
+              html = html.replace(new RegExp('name="rotate" value="' + q.rotate + '"', 'g'), '$& checked');
 
               html = html
-                  .replace(/<!--repeatBegin-->[^\0]*<!--repeatEnd-->/, createMultipleHtmlRows);
-
-              res.setHeader('Content-Type', 'text/html');
-              end(res, html
-                  .replace(/#adminKey\b/g, htmlEncode(q.adminKey || ''))
-                  .replace(/@adminKey\b/g, querystring.escape(q.adminKey || ''))
+                  .replace(/#dev_enum_err\b/g, htmlEncode(err))
+                  .replace(/[@#]MIN_FPS\b/g, String(MIN_FPS))
+                  .replace(/[@#]MAX_FPS\b/g, String(MAX_FPS))
                   .replace(/[@#]fps\b/g, q.fps)
                   .replace(/[@#]scale\b/g, q.scale)
                   .replace(/[@#]rotate\b/g, q.rotate)
                   .replace(/@stream_web\b/g, 'http' + (conf.ssl.on ? 's' : '') + '://' + (isAnyIp(conf.ip) ? '127.0.0.1' : conf.ip) + ':' + conf.port)
+                  .replace(/#show_ifStreamWebLocal\b/g, conf.ip === 'localhost' || conf.ip === '127.0.0.1' ? '' : 'none')
+                  .replace(/#show_ifAdminWebLocal\b/g, conf.adminWeb.ip === 'localhost' || conf.adminWeb.ip === '127.0.0.1' ? '' : 'none')
+                  .replace(/#hide_ifStreamWebSSL\b/g, conf.ssl.on ? 'none' : '')
+                  .replace(/#hide_ifAdminWebSSL\b/g, conf.adminWeb.ssl.on ? 'none' : '')
+                  .replace(/#hide_ifAdminKey\b/g, conf.adminWeb.adminKey ? 'none' : '')
                   .replace(/#show_ifAdminKey\b/g, conf.adminWeb.adminKey ? '' : 'none')
-              );
+              ;
+
+              //finally make html rows
+              html = html.replace(/<!--repeatBegin-->[^\0]*<!--repeatEnd-->/, createMultipleHtmlRows);
+
+              res.setHeader('Content-Type', 'text/html');
+              end(res, html);
 
               function createMultipleHtmlRows(htmlRow) {
                 //combine with existing other device serial number(maybe not connected) in devMgr
@@ -1418,12 +1389,11 @@ function startAdminWeb() {
                 return deviceList.reduce(
                     function (joinedStr, device, i) {
                       var accessKey = devMgr[device] ? devMgr[device].accessKey : '';
-                      return joinedStr + htmlRow
+                      return joinedStr + htmlRow //do some device concerned replace
                           .replace(/#devinfo\b/g, htmlEncode(infoList[i] || 'Unknown'))
                           .replace(/#devinfo_class\b/g, htmlEncode(infoList[i] ? '' : 'errorWithTip'))
                           .replace(/#device\b/g, htmlEncode(device))
                           .replace(/@device\b/g, querystring.escape(device))
-                          .replace(/#accessKey\b/g, htmlEncode(accessKey || ''))
                           .replace(/@accessKey\b/g, querystring.escape(accessKey || ''))
                           .replace(/#accessKey_disp\b/g, htmlEncode(accessKey || '<None> Please "Set Access Key" for this device'))
                           .replace(/#styleName_AccessKey_disp\b/g, accessKey ? 'infoWithTip' : 'errorWithTip')
@@ -1443,7 +1413,9 @@ function startAdminWeb() {
       case '/stopServer':  //------------------------------------stop server management---------------------------------
         end(res, 'OK');
         log(httpServer.logHead + 'stop on demand');
-        process.exit(0);
+        setTimeout(function () {
+          process.exit(0);
+        }, 10);
         break;
       case '/restartAdb':  //------------------------------------restart ADB--------------------------------------------
         end(res, 'OK');
@@ -1535,8 +1507,8 @@ checkAdb(
 //done: show streaming counter in menu page
 //done: resize and rotate locally by html css3
 //done: add conf.maxRecordedFileSize limitation
+//done: support replay specified recorded file by fileIndex querystring( in number format or string format like 20140110_153928_704_000)
 
-//todo: support replay specified recorded file by fileIndex querystring
 //todo: test big file recording
 //todo: apng stream split logic  (Firefox failed to play recorded file some times)
 //todo: test: on Windows OS, IE

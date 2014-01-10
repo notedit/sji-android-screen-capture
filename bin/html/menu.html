@@ -27,7 +27,7 @@
         <label title="Access Key is used as querystring accessKey=theKey of URL when access device's live capture or recorded files">
           <input type="text" name="accessKey" size="36" value=""/>
           <span class="infoWithTip">?</span>
-        </label>,
+        </label>
         <button type="submit" name="action" value="unsetAccessKey" class="midButton" style="float:right">Unset Access Key</button>
       </li>
       <li>
@@ -42,7 +42,7 @@
           <input type="hidden" name="fps" value="#fps"/><!--only used for "Start Recording"-->
           <input type="hidden" name="scale" value="#scale"/><!--only used for "Start Recording"-->
           <input type="hidden" name="rotate" value="#rotate"/><!--only used for "Start Recording"-->
-        </label>,
+        </label>
         <span style="float: right">
           <button type="submit" name="action" value="stopRecording" class="midButton">Stop Recording</button>
           <button type="submit" name="action" value="deleteRecordedFiles" class="midButton">Delete Recorded File</button>
@@ -80,7 +80,8 @@
           </p>
           <ul>
             <li><a href="@stream_web/capture?device=@device&accessKey=@accessKey&type=png&scale=@scale&rotate=@rotate" target="screenshot #device">Screenshot (PNG)</a></li>
-            <li><a href="/getInternalLog?device=@device&adminKey=@adminKey" target="asc_log_#device">Android-Side Utility Log</a></li>
+            <li><a href="/getInternalLog?adminKey=@adminKey&device=@device" target="asc_log_#device" style="font-size: smaller">Android-Side Utility Log</a></li>
+            <li><a href="/getDeviceCpuMemTop?adminKey=@adminKey&device=@device" target="asc_top_#device" style="font-size: smaller">Android-Side CPU Memory Top</a></li>
           </ul>
         </td>
         <td align="left" valign="top" nowrap>
@@ -88,10 +89,9 @@
           <p class="note">Streaming Count: #streamingCount_apng</p>
           <ul>
             <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=apng&fps=@fps&scale=@scale&rotate=@rotate" target="live view #device">Live View</a></li>
-            <li>
-              Recorded File:
-              <a href="@stream_web/sampleHtmlToViewRecordedFile?device=@device&accessKey=@accessKey&type=apng&fps=@fps" target="replay #device">View</a>
-              <a href="@stream_web/downloadRecordedFile?device=@device&accessKey=@accessKey&type=apng" target="asc download">Download</a>
+            <li>Recorded File:
+              <a href="@stream_web/sampleHtmlToViewRecordedFile?device=@device&accessKey=@accessKey&type=apng&fileIndex=&fps=@fps" target="replay #device">View</a>
+              <a href="@stream_web/downloadRecordedFile?device=@device&accessKey=@accessKey&type=apng&fileIndex=" target="asc download">Download</a>
             </li>
           </ul>
         </td>
@@ -102,10 +102,9 @@
             <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate" target="live view #device">Live View (Stop Recording)</a></li>
             <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate&recordOption=sync" target="live view #device">Live View & Record until close view</a></li>
             <li><a href="@stream_web/sampleHtmlToViewLiveCapture?device=@device&accessKey=@accessKey&type=webm&fps=@fps&scale=@scale&rotate=@rotate&recordOption=async" target="live view #device">Live View & Record in background</a></li>
-            <li>
-              Recorded File:
-              <a href="@stream_web/sampleHtmlToViewRecordedFile?device=@device&accessKey=@accessKey&type=webm" target="replay #device">View</a>
-              <a href="@stream_web/downloadRecordedFile?device=@device&accessKey=@accessKey&type=webm" target="asc download">Download</a>
+            <li>Recorded File:
+              <a href="@stream_web/sampleHtmlToViewRecordedFile?device=@device&accessKey=@accessKey&type=webm&fileIndex=" target="replay #device">View</a>
+              <a href="@stream_web/downloadRecordedFile?device=@device&accessKey=@accessKey&type=webm&fileIndex=" target="asc download">Download</a>
             </li>
           </ul>
         </td>
@@ -151,7 +150,7 @@
     keyword text(not link) and stay a second then you can see tip.
   </p>
   <ul class="expandable" style="position: fixed; bottom: 0; left: 0; background-color: white">
-    <span class="infoWithTip">How to ...</span>
+    <span class="infoWithTip note">How to ...</span>
     <li style="display: #hide_ifAdminKey">
       <span class="note infoWithTip">To Enable Authentication on Stream Web...</span>
       <ul>
@@ -228,7 +227,7 @@
     </li>
   </ul>
   <ul class="expandable" style="position: fixed; bottom: 0; right: 0; background-color: white">
-    <span class="infoWithTip">Advanced Server Management...</span>
+    <span class="infoWithTip note">Advanced Server Management...</span>
     <li style="margin-bottom: 8px">
       <a href="/stopServer?adminKey=@adminKey"><button style="color: red" class="midButton">Stop Server</button></a>
       <a href="/restartAdb?adminKey=@adminKey"><button style="color: red" class="midButton">Restart ADB</button></a>
